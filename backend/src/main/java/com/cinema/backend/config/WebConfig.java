@@ -20,6 +20,7 @@ public class WebConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
         config.addAllowedOrigin("http://localhost:3000");
+        config.addAllowedOrigin("http://localhost:3001");
         config.setAllowedHeaders(Arrays.asList(
                 "Authorization",
                 "Cache-Control",
