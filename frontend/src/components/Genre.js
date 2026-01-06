@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import FetchGenres from '../API/GetGenres';
-import RemoveUnwantedGenres from '../utils/RemoveNonCinemaGenres';
+import RemoveUnwantedGenres from '../utils/removeNonCinemaGenres';
 
 const Genres = ({ setGenreIds }) => {
   const [genres, setGenres] = useState([]);
