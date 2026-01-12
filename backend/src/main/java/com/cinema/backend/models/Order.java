@@ -42,6 +42,12 @@ public class Order {
     private double discount; // Promo code discount (UC-19)
     private double totalAmount; // Final total amount
 
+    // Payment fields for UC-20
+    private String transactionId; // Payment transaction ID
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date paymentDate; // When payment was completed
+    private String paymentMethod; // Card, Cash, etc.
+
     public Order() {
     }
 
@@ -209,6 +215,30 @@ public class Order {
 
     public void setTotalAmount(double totalAmount) {
         this.totalAmount = totalAmount;
+    }
+
+    public String getTransactionId() {
+        return transactionId;
+    }
+
+    public void setTransactionId(String transactionId) {
+        this.transactionId = transactionId;
+    }
+
+    public Date getPaymentDate() {
+        return paymentDate;
+    }
+
+    public void setPaymentDate(Date paymentDate) {
+        this.paymentDate = paymentDate;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
     }
 
     @PrePersist

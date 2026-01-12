@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BuyTickets from '../API/BuyTickets';
+import MakePayment from '../API/MakePayment';
 import getSeatPlan from '../API/GetSeatPlan';
 import updateSeatsInHall from '../API/UpdateSeatsInHall';
 import generateRandomOccupiedSeats from '../utils/GenerateRandomOccupiedSeats';
 import SeatSelector from './SeatSelector';
 import SeatShowcase from './SeatShowcase';
+import PaymentModal from './PaymentModal';
 
 const movies = [
   {
@@ -26,6 +28,10 @@ function SeatPlan({ movie }) {
   const [userId, setUserId] = useState('');
 
   const [seatPlan, setSeatPlan] = useState(null);
+  
+  // Payment modal state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [pendingOrder, setPendingOrder] = useState(null);
 
   useEffect(() => {
     const storedMovieSession = JSON.parse(localStorage.getItem('movieSession'));
@@ -135,16 +141,43 @@ function SeatPlan({ movie }) {
 
       // Backend handles seat reservation, so we don't need to call updateSeatsInHall
       // The order creation endpoint will reserve seats automatically
-      const buyTickets = await BuyTickets(BASE_URL, myOrder);
-      if (buyTickets) {
-        setSuccessPopupVisible(true);
-        setTimeout(() => {
-          setSuccessPopupVisible(false);
-          navigate('/');
-        }, 2000);
+      const orderResponse = await BuyTickets(BASE_URL, myOrder);
+      
+      if (orderResponse && orderResponse.orderId) {
+        // Order created successfully with PENDING status
+        // Show payment modal for user to choose payment method
+        setPendingOrder(orderResponse);
+        setShowPaymentModal(true);
       } else {
         console.error('Failed to create order');
+        alert('Failed to create booking. Please try again.');
       }
+    }
+  };
+
+  // Handle payment confirmation from modal
+  const handlePaymentConfirm = async (paymentDetails) => {
+    if (!pendingOrder) return;
+
+    const orderId = pendingOrder.orderId;
+    
+    // Process payment with selected method
+    const paymentResponse = await MakePayment(BASE_URL, orderId, paymentDetails);
+    
+    if (paymentResponse && paymentResponse.success) {
+      // Payment successful - booking confirmed
+      console.log('Payment successful:', paymentResponse);
+      setShowPaymentModal(false);
+      setSuccessPopupVisible(true);
+      setTimeout(() => {
+        setSuccessPopupVisible(false);
+        navigate('/');
+      }, 2000);
+    } else {
+      // Payment failed
+      console.error('Payment failed:', paymentResponse);
+      setShowPaymentModal(false);
+      alert('Payment failed: ' + (paymentResponse?.message || 'Unknown error. Please try again.'));
     }
   };
 
@@ -228,6 +261,14 @@ function SeatPlan({ movie }) {
           </div>
         )}
       </div>
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onConfirm={handlePaymentConfirm}
+        priceBreakdown={pendingOrder?.priceBreakdown}
+      />
     </div>
   );
 }
