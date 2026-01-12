@@ -285,6 +285,7 @@ public class OrderController {
         response.put("orderId", order.getOrderId());
         response.put("bookingReference", order.getBookingReference() != null ? order.getBookingReference() : "");
         response.put("orderStatus", order.getOrderStatus());
+        response.put("orderDate", order.getOrderDate()); // UC-23: Add orderDate for cancellation window check
         response.put("movieTitle", order.getMovieTitle());
         response.put("movieSession", order.getMovieSession());
         response.put("movieRuntime", order.getMovieRuntime());
@@ -379,5 +380,97 @@ public class OrderController {
     private boolean isValidEmail(String email) {
         String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
         return email.matches(emailRegex);
+    }
+
+    // UC-23: Cancel Booking
+    @DeleteMapping("/api/v1/order/{orderId}")
+    public ResponseEntity<?> cancelBooking(@PathVariable Long orderId) {
+        try {
+            // Find the order
+            Optional<Order> orderOptional = orderRepository.findById(orderId);
+
+            if (!orderOptional.isPresent()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("success", false, "message", "Booking not found"));
+            }
+
+            Order order = orderOptional.get();
+
+            // Check if order is already cancelled
+            if ("CANCELLED".equals(order.getOrderStatus())) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("success", false, "message", "This booking has already been cancelled"));
+            }
+
+            // Validate 24-hour cancellation window
+            String orderDateStr = order.getOrderDate();
+            Date orderDate;
+            try {
+                orderDate = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").parse(orderDateStr);
+            } catch (ParseException e) {
+                // Try ISO 8601 format with milliseconds
+                try {
+                    orderDate = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").parse(orderDateStr);
+                } catch (ParseException ex) {
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body(Map.of("success", false, "message", "Invalid order date format"));
+                }
+            }
+
+            Date currentDate = new Date();
+            long diffInMillis = currentDate.getTime() - orderDate.getTime();
+            long diffInHours = diffInMillis / (60 * 60 * 1000);
+
+            if (diffInHours > 24) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of(
+                                "success", false,
+                                "message",
+                                "Cancellation window has expired. Bookings can only be cancelled within 24 hours of creation."));
+            }
+
+            // Release seats back to cinema hall
+            if (order.getMovieSession() != null && !order.getMovieSession().isEmpty()) {
+                releaseSeats(order.getMovieId(), order.getMovieSession(), order.getSeat());
+            }
+
+            // Update order status to CANCELLED
+            order.setOrderStatus("CANCELLED");
+            orderRepository.save(order);
+
+            System.out.println("Order " + orderId + " cancelled successfully. Seats released.");
+
+            return ResponseEntity.ok()
+                    .body(Map.of(
+                            "success", true,
+                            "message",
+                            "Booking cancelled successfully. Refund will be processed within 5-7 business days.",
+                            "orderId", orderId,
+                            "refundAmount", order.getTotalAmount()));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Error cancelling booking: " + e.getMessage()));
+        }
+    }
+
+    // Helper method to release seats from cinema hall
+    private void releaseSeats(Long movieId, String movieSession, List<Integer> seatsToRelease) {
+        Optional<CinemaHall> hallOptional = cinemaHallRepository.findByMovieIdAndMovieSession(movieId, movieSession);
+
+        if (hallOptional.isPresent()) {
+            CinemaHall hall = hallOptional.get();
+            List<Integer> currentOccupiedSeats = new ArrayList<>(hall.getUpdatedSeats());
+
+            // Remove the cancelled seats from occupied list
+            currentOccupiedSeats.removeAll(seatsToRelease);
+
+            hall.setUpdatedSeats(currentOccupiedSeats);
+            cinemaHallRepository.save(hall);
+
+            System.out
+                    .println("Released seats " + seatsToRelease + " for movie " + movieId + " session " + movieSession);
+        }
     }
 }

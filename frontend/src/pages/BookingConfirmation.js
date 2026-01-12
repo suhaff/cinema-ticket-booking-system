@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import SendBookingEmail from '../API/SendBookingEmail';
+import CancelBooking from '../API/CancelBooking';
 
 const BookingConfirmation = () => {
     const { orderId } = useParams();
@@ -12,6 +13,8 @@ const BookingConfirmation = () => {
     const [emailSending, setEmailSending] = useState(false);
     const [emailSuccess, setEmailSuccess] = useState(false);
     const [emailError, setEmailError] = useState('');
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const [cancelling, setCancelling] = useState(false);
 
     useEffect(() => {
         fetchBookingDetails();
@@ -27,6 +30,7 @@ const BookingConfirmation = () => {
 
             const data = await response.json();
             setBooking(data);
+            console.log('Booking loaded:', { orderStatus: data.orderStatus, orderDate: data.orderDate });
             setLoading(false);
         } catch (err) {
             console.error('Error fetching booking:', err);
@@ -68,6 +72,32 @@ const BookingConfirmation = () => {
         } else {
             setEmailError(result.message || 'Failed to send email. Please try again.');
         }
+    };
+
+    const handleCancelBooking = async () => {
+        setCancelling(true);
+        
+        const result = await CancelBooking(process.env.REACT_APP_BASE_URL, orderId);
+        
+        setCancelling(false);
+        setShowCancelModal(false);
+
+        if (result.success) {
+            alert(`Booking cancelled successfully!\n\nRefund amount: €${result.refundAmount?.toFixed(2)}\n\nRefund will be processed within 5-7 business days.`);
+            // Refresh booking details to show cancelled status
+            fetchBookingDetails();
+        } else {
+            alert(`Failed to cancel booking:\n${result.message}`);
+        }
+    };
+
+    const isWithin24Hours = (orderDate) => {
+        if (!orderDate) return false;
+        const orderTime = new Date(orderDate).getTime();
+        const currentTime = new Date().getTime();
+        const diffInHours = (currentTime - orderTime) / (60 * 60 * 1000);
+        console.log('Checking 24-hour window:', { orderDate, diffInHours, isValid: diffInHours <= 24 });
+        return diffInHours <= 24;
     };
 
     const formatDate = (dateString) => {
@@ -306,6 +336,20 @@ const BookingConfirmation = () => {
                                         </svg>
                                         Print Ticket
                                     </button>
+                                    
+                                    {/* Cancel Button - Only show if within 24 hours and not cancelled */}
+                                    {booking.orderStatus !== 'CANCELLED' && isWithin24Hours(booking.orderDate) && (
+                                        <button
+                                            onClick={() => setShowCancelModal(true)}
+                                            className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition flex items-center gap-2"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                            Cancel Booking
+                                        </button>
+                                    )}
+                                    
                                     <button
                                         onClick={() => navigate('/')}
                                         className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition"
@@ -323,11 +367,47 @@ const BookingConfirmation = () => {
                         <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
                             <li>Please arrive at least 15 minutes before the session start time</li>
                             <li>Present your QR code or booking reference at the entrance</li>
-                            <li>This booking is non-refundable after the session starts</li>
-                            <li>For cancellations or modifications, contact customer service</li>
+                            <li>Bookings can be cancelled within 24 hours for a full refund</li>
+                            <li>Refunds will be processed within 5-7 business days</li>
                         </ul>
                     </div>
                 </div>
+
+                {/* Cancel Confirmation Modal */}
+                {showCancelModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                            <h3 className="text-xl font-bold text-gray-900 mb-4">Cancel Booking?</h3>
+                            <p className="text-gray-600 mb-6">
+                                Are you sure you want to cancel this booking? This action cannot be undone.
+                                A refund of <span className="font-semibold">€{booking.totalAmount?.toFixed(2)}</span> will be processed within 5-7 business days.
+                            </p>
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => setShowCancelModal(false)}
+                                    disabled={cancelling}
+                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+                                >
+                                    Keep Booking
+                                </button>
+                                <button
+                                    onClick={handleCancelBooking}
+                                    disabled={cancelling}
+                                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {cancelling ? (
+                                        <>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                            Cancelling...
+                                        </>
+                                    ) : (
+                                        'Yes, Cancel'
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
