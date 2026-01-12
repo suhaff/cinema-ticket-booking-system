@@ -48,6 +48,11 @@ public class Order {
     private Date paymentDate; // When payment was completed
     private String paymentMethod; // Card, Cash, etc.
 
+    // Booking confirmation fields for UC-21
+    private String bookingReference; // Unique booking reference (e.g., BK-20260112-1234)
+    @Column(columnDefinition = "TEXT")
+    private String qrCode; // Base64 encoded QR code image
+
     public Order() {
     }
 
@@ -239,6 +244,22 @@ public class Order {
 
     public void setPaymentMethod(String paymentMethod) {
         this.paymentMethod = paymentMethod;
+    }
+
+    public String getBookingReference() {
+        return bookingReference;
+    }
+
+    public void setBookingReference(String bookingReference) {
+        this.bookingReference = bookingReference;
+    }
+
+    public String getQrCode() {
+        return qrCode;
+    }
+
+    public void setQrCode(String qrCode) {
+        this.qrCode = qrCode;
     }
 
     @PrePersist

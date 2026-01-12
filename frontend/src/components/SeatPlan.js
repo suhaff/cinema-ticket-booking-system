@@ -168,11 +168,9 @@ function SeatPlan({ movie }) {
       // Payment successful - booking confirmed
       console.log('Payment successful:', paymentResponse);
       setShowPaymentModal(false);
-      setSuccessPopupVisible(true);
-      setTimeout(() => {
-        setSuccessPopupVisible(false);
-        navigate('/');
-      }, 2000);
+      
+      // Navigate to confirmation page instead of showing popup
+      navigate(`/booking-confirmation/${orderId}`);
     } else {
       // Payment failed
       console.error('Payment failed:', paymentResponse);

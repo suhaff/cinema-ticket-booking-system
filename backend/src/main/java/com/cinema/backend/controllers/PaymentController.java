@@ -2,12 +2,15 @@ package com.cinema.backend.controllers;
 
 import com.cinema.backend.models.Order;
 import com.cinema.backend.repositories.OrderRepository;
+import com.cinema.backend.services.QRCodeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/payment")
@@ -15,6 +18,9 @@ public class PaymentController {
 
     @Autowired
     private OrderRepository orderRepository;
+
+    @Autowired
+    private QRCodeService qrCodeService;
 
     @PostMapping("/{orderId}")
     public ResponseEntity<?> processPayment(@PathVariable Long orderId,
@@ -61,6 +67,21 @@ public class PaymentController {
                 order.setPaymentMethod(paymentMethod);
                 order.setOrderStatus("CONFIRMED");
 
+                // UC-21: Generate booking reference and QR code
+                String bookingReference = generateBookingReference(order);
+                order.setBookingReference(bookingReference);
+
+                // Generate QR code with booking details
+                String qrData = qrCodeService.generateBookingQRData(
+                        bookingReference,
+                        order.getMovieTitle(),
+                        order.getMovieSession(),
+                        formatSeats(order.getSeat()),
+                        "Hall 1" // TODO: Get actual hall name from session
+                );
+                String qrCodeBase64 = qrCodeService.generateQRCodeBase64(qrData, 300, 300);
+                order.setQrCode(qrCodeBase64);
+
                 orderRepository.save(order);
 
                 System.out
@@ -71,6 +92,8 @@ public class PaymentController {
                                 "success", true,
                                 "orderId", order.getOrderId(),
                                 "transactionId", transactionId,
+                                "bookingReference", bookingReference,
+                                "qrCode", qrCodeBase64,
                                 "orderStatus", "CONFIRMED",
                                 "message", "Payment successful. Booking confirmed!",
                                 "totalAmount", order.getTotalAmount(),
@@ -175,6 +198,25 @@ public class PaymentController {
         return "TXN" + System.currentTimeMillis() + (int) (Math.random() * 1000);
     }
 
+    // Generate unique booking reference for UC-21
+    private String generateBookingReference(Order order) {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
+        String datePart = dateFormat.format(new Date());
+        String randomPart = String.format("%04d", (int) (Math.random() * 10000));
+        return "BK-" + datePart + "-" + randomPart;
+    }
+
+    // Format seat list as string
+    private String formatSeats(List<Integer> seats) {
+        if (seats == null || seats.isEmpty()) {
+            return "N/A";
+        }
+        return seats.stream()
+                .sorted()
+                .map(String::valueOf)
+                .collect(Collectors.joining(", "));
+    }
+
     // Get payment status for an order
     @GetMapping("/{orderId}/status")
     public ResponseEntity<?> getPaymentStatus(@PathVariable Long orderId) {
@@ -196,6 +238,7 @@ public class PaymentController {
             response.put("transactionId", order.getTransactionId());
             response.put("paymentDate", order.getPaymentDate());
             response.put("paymentMethod", order.getPaymentMethod());
+            response.put("bookingReference", order.getBookingReference());
         }
 
         return ResponseEntity.ok(response);

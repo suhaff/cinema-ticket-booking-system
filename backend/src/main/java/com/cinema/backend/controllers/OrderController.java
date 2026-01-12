@@ -5,6 +5,7 @@ import com.cinema.backend.models.CinemaHall;
 import com.cinema.backend.models.Order;
 import com.cinema.backend.repositories.CinemaHallRepository;
 import com.cinema.backend.repositories.OrderRepository;
+import com.cinema.backend.services.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,9 @@ public class OrderController {
 
     @Autowired
     private CinemaHallRepository cinemaHallRepository;
+
+    @Autowired
+    private EmailService emailService;
 
     @PostMapping("/api/v1/order")
     ResponseEntity<?> newOrder(@RequestBody Order newOrder) {
@@ -219,5 +223,117 @@ public class OrderController {
             newHall.setOrderTime(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
             cinemaHallRepository.save(newHall);
         }
+    }
+
+    // UC-21: Get order details for confirmation page
+    @GetMapping("/api/v1/booking/{orderId}")
+    ResponseEntity<?> getOrder(@PathVariable Long orderId) {
+        Optional<Order> orderOptional = orderRepository.findById(orderId);
+
+        if (!orderOptional.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Order not found"));
+        }
+
+        Order order = orderOptional.get();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("orderId", order.getOrderId());
+        response.put("bookingReference", order.getBookingReference() != null ? order.getBookingReference() : "");
+        response.put("orderStatus", order.getOrderStatus());
+        response.put("movieTitle", order.getMovieTitle());
+        response.put("movieSession", order.getMovieSession());
+        response.put("movieRuntime", order.getMovieRuntime());
+        response.put("movieLanguage", order.getMovieLanguage());
+        response.put("seats", order.getSeat());
+        response.put("subtotal", order.getSubtotal());
+        response.put("bookingFee", order.getBookingFee());
+        response.put("tax", order.getTax());
+        response.put("discount", order.getDiscount());
+        response.put("totalAmount", order.getTotalAmount());
+        response.put("qrCode", order.getQrCode() != null ? order.getQrCode() : "");
+        response.put("transactionId", order.getTransactionId() != null ? order.getTransactionId() : "");
+        response.put("paymentMethod", order.getPaymentMethod() != null ? order.getPaymentMethod() : "");
+
+        // Handle Date objects that might be null
+        if (order.getPaymentDate() != null) {
+            response.put("paymentDate", order.getPaymentDate().toString());
+        } else {
+            response.put("paymentDate", null);
+        }
+
+        if (order.getCreatedAt() != null) {
+            response.put("createdAt", order.getCreatedAt().toString());
+        } else {
+            response.put("createdAt", null);
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
+    // Send booking confirmation email
+    @PostMapping("/api/v1/booking/{orderId}/send-email")
+    ResponseEntity<?> sendBookingEmail(@PathVariable Long orderId, @RequestBody Map<String, String> emailRequest) {
+        try {
+            String toEmail = emailRequest.get("email");
+
+            if (toEmail == null || toEmail.trim().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("success", false, "message", "Email address is required"));
+            }
+
+            // Validate email format
+            if (!isValidEmail(toEmail)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("success", false, "message", "Invalid email address format"));
+            }
+
+            Optional<Order> orderOptional = orderRepository.findById(orderId);
+
+            if (!orderOptional.isPresent()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("success", false, "message", "Booking not found"));
+            }
+
+            Order order = orderOptional.get();
+
+            // Check if booking is confirmed
+            if (!"CONFIRMED".equals(order.getOrderStatus())) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("success", false, "message", "Only confirmed bookings can be emailed"));
+            }
+
+            // Send email
+            boolean emailSent = emailService.sendBookingConfirmationEmail(
+                    toEmail,
+                    order.getBookingReference(),
+                    order.getMovieTitle(),
+                    order.getMovieSession(),
+                    order.getSeat(),
+                    order.getTotalAmount(),
+                    order.getQrCode());
+
+            if (emailSent) {
+                return ResponseEntity.ok()
+                        .body(Map.of(
+                                "success", true,
+                                "message", "Booking confirmation sent to " + toEmail,
+                                "email", toEmail));
+            } else {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(Map.of("success", false, "message", "Failed to send email. Please try again."));
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Error sending email: " + e.getMessage()));
+        }
+    }
+
+    // Simple email validation
+    private boolean isValidEmail(String email) {
+        String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
+        return email.matches(emailRegex);
     }
 }

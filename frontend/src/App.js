@@ -5,6 +5,7 @@ import Footer from './layout/Footer';
 import NavBar from './layout/NavBar';
 import Home from './pages/Home';
 import MovieDetails from './pages/MovieDetails';
+import BookingConfirmation from './pages/BookingConfirmation';
 import { isLoggedIn, login, logout } from './utils/Auth';
 
 function App() {
@@ -47,6 +48,7 @@ function App() {
             element={<Home searchText={searchText} user={user} />}
           />
           <Route path='/movie/:id' element={<MovieDetails />} />
+          <Route path='/booking-confirmation/:orderId' element={<BookingConfirmation />} />
         </Routes>
         <Footer />
       </BrowserRouter>
