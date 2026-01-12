@@ -121,31 +121,23 @@ function SeatPlan({ movie }) {
         movieGenres: order.movie.genres,
         movieRuntime: order.movie.runtime,
         movieLanguage: order.movie.language,
+        movieSession: movieSession.time,
         moviePrice: order.movie.price,
         seat: order.seat,
         userName: order.userName,
       };
 
-      const hallUpdate = {
-        movieId: movie.id,
-        movieSession: movieSession.time,
-        orderTime: order.orderDate,
-        updatedSeats: updatedOccupiedSeats,
-      };
-
-      const updateSuccess = await updateSeatsInHall(BASE_URL, hallUpdate);
-
-      if (updateSuccess) {
-        const buyTickets = await BuyTickets(BASE_URL, myOrder);
-        if (buyTickets) {
-          setSuccessPopupVisible(true);
-          setTimeout(() => {
-            setSuccessPopupVisible(false);
-            navigate('/');
-          }, 2000);
-        }
+      // Backend handles seat reservation, so we don't need to call updateSeatsInHall
+      // The order creation endpoint will reserve seats automatically
+      const buyTickets = await BuyTickets(BASE_URL, myOrder);
+      if (buyTickets) {
+        setSuccessPopupVisible(true);
+        setTimeout(() => {
+          setSuccessPopupVisible(false);
+          navigate('/');
+        }, 2000);
       } else {
-        console.error('Failed to update occupied seats in the database');
+        console.error('Failed to create order');
       }
     }
   };

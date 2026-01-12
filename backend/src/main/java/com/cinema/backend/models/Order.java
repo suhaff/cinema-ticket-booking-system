@@ -26,15 +26,21 @@ public class Order {
     private String movieTitle;
     private String movieGenres;
     private String movieLanguage;
+    private String movieSession;
     private double moviePrice;
     private int movieRuntime;
     @ElementCollection
     private List<Integer> seat;
 
+    @Column(nullable = false)
+    private String orderStatus = "PENDING"; // PENDING, CONFIRMED, CANCELLED, PAYMENT_FAILED
+
     public Order() {
     }
 
-    public Order(Long orderId, Long customerId, String userName, String orderDate, Long movieId, String movieTitle, String movieGenres, String movieLanguage, double moviePrice, int movieRuntime, List<Integer> seat) {
+    public Order(Long orderId, Long customerId, String userName, String orderDate, Long movieId, String movieTitle,
+            String movieGenres, String movieLanguage, String movieSession, double moviePrice, int movieRuntime,
+            List<Integer> seat, String orderStatus) {
         this.orderId = orderId;
         this.customerId = customerId;
         this.userName = userName;
@@ -43,9 +49,11 @@ public class Order {
         this.movieTitle = movieTitle;
         this.movieGenres = movieGenres;
         this.movieLanguage = movieLanguage;
+        this.movieSession = movieSession;
         this.moviePrice = moviePrice;
         this.movieRuntime = movieRuntime;
         this.seat = seat;
+        this.orderStatus = orderStatus;
     }
 
     public Long getOrderId() {
@@ -136,6 +144,26 @@ public class Order {
         this.seat = seat;
     }
 
+    public String getMovieSession() {
+        return movieSession;
+    }
+
+    public void setMovieSession(String movieSession) {
+        this.movieSession = movieSession;
+    }
+
+    public String getOrderStatus() {
+        return orderStatus;
+    }
+
+    public void setOrderStatus(String orderStatus) {
+        this.orderStatus = orderStatus;
+    }
+
+    public Date getCreatedAt() {
+        return createdAt;
+    }
+
     @PrePersist
     protected void onCreate() {
         createdAt = new Date();
@@ -143,15 +171,24 @@ public class Order {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         Order order = (Order) o;
-        return Double.compare(moviePrice, order.moviePrice) == 0 && movieRuntime == order.movieRuntime && Objects.equals(orderId, order.orderId) && Objects.equals(customerId, order.customerId) && Objects.equals(userName, order.userName) && Objects.equals(orderDate, order.orderDate) && Objects.equals(movieId, order.movieId) && Objects.equals(movieTitle, order.movieTitle) && Objects.equals(movieGenres, order.movieGenres) && Objects.equals(movieLanguage, order.movieLanguage) && Objects.equals(seat, order.seat);
+        return Double.compare(moviePrice, order.moviePrice) == 0 && movieRuntime == order.movieRuntime
+                && Objects.equals(orderId, order.orderId) && Objects.equals(customerId, order.customerId)
+                && Objects.equals(userName, order.userName) && Objects.equals(orderDate, order.orderDate)
+                && Objects.equals(movieId, order.movieId) && Objects.equals(movieTitle, order.movieTitle)
+                && Objects.equals(movieGenres, order.movieGenres) && Objects.equals(movieLanguage, order.movieLanguage)
+                && Objects.equals(movieSession, order.movieSession) && Objects.equals(seat, order.seat)
+                && Objects.equals(orderStatus, order.orderStatus);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(orderId, customerId, userName, orderDate, movieId, movieTitle, movieGenres, movieLanguage, moviePrice, movieRuntime, seat);
+        return Objects.hash(orderId, customerId, userName, orderDate, movieId, movieTitle, movieGenres, movieLanguage,
+                movieSession, moviePrice, movieRuntime, seat, orderStatus);
     }
 
     @Override
@@ -165,9 +202,11 @@ public class Order {
                 ", movieTitle='" + movieTitle + '\'' +
                 ", movieGenres='" + movieGenres + '\'' +
                 ", movieLanguage='" + movieLanguage + '\'' +
+                ", movieSession='" + movieSession + '\'' +
                 ", moviePrice=" + moviePrice +
                 ", movieRuntime=" + movieRuntime +
                 ", seat=" + seat +
+                ", orderStatus='" + orderStatus + '\'' +
                 '}';
     }
 }
