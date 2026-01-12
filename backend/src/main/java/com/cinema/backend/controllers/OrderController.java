@@ -1,5 +1,6 @@
 package com.cinema.backend.controllers;
 
+import com.cinema.backend.dto.PriceBreakdownDTO;
 import com.cinema.backend.models.CinemaHall;
 import com.cinema.backend.models.Order;
 import com.cinema.backend.repositories.CinemaHallRepository;
@@ -66,6 +67,20 @@ public class OrderController {
             // Set order status to PENDING (reserved)
             newOrder.setOrderStatus("PENDING");
 
+            // UC-18: Calculate price breakdown
+            PriceBreakdownDTO priceBreakdown = calculatePriceBreakdown(
+                    newOrder.getMoviePrice(),
+                    newOrder.getSeat().size(),
+                    0.0 // discount will be applied by UC-19
+            );
+
+            // Store price breakdown in order
+            newOrder.setSubtotal(priceBreakdown.getSubtotal());
+            newOrder.setBookingFee(priceBreakdown.getBookingFee());
+            newOrder.setTax(priceBreakdown.getTax());
+            newOrder.setDiscount(priceBreakdown.getDiscount());
+            newOrder.setTotalAmount(priceBreakdown.getTotal());
+
             // Save booking with PENDING status
             Order savedOrder = orderRepository.save(newOrder);
 
@@ -74,14 +89,21 @@ public class OrderController {
                 reserveSeats(newOrder.getMovieId(), newOrder.getMovieSession(), newOrder.getSeat());
             }
 
-            // Return booking ID to proceed to payment
+            // Return booking ID and price breakdown to proceed to payment
             System.out.println("Order created successfully: OrderID=" + savedOrder.getOrderId());
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(Map.of(
                             "orderId", savedOrder.getOrderId(),
                             "status", savedOrder.getOrderStatus(),
                             "message", "Booking created successfully. Proceed to payment.",
-                            "totalPrice", savedOrder.getMoviePrice()));
+                            "priceBreakdown", Map.of(
+                                    "basePrice", priceBreakdown.getBasePrice(),
+                                    "seatCount", priceBreakdown.getSeatCount(),
+                                    "subtotal", priceBreakdown.getSubtotal(),
+                                    "bookingFee", priceBreakdown.getBookingFee(),
+                                    "tax", priceBreakdown.getTax(),
+                                    "discount", priceBreakdown.getDiscount(),
+                                    "total", priceBreakdown.getTotal())));
 
         } catch (Exception e) {
             e.printStackTrace(); // Log the full stack trace for debugging
@@ -138,6 +160,43 @@ public class OrderController {
          * return true;
          * }
          */
+    }
+
+    // UC-18: Calculate price breakdown with booking fees and taxes
+    private PriceBreakdownDTO calculatePriceBreakdown(double basePrice, int seatCount, double discount) {
+        // Configurable pricing rules (can be moved to application.properties)
+        final double BOOKING_FEE_RATE = 0.10; // 10% booking fee
+        final double TAX_RATE = 0.10; // 10% tax rate
+
+        // Calculate subtotal
+        double subtotal = basePrice * seatCount;
+
+        // Calculate booking fee
+        double bookingFee = subtotal * BOOKING_FEE_RATE;
+
+        // Calculate tax on (subtotal + booking fee - discount)
+        double taxableAmount = subtotal + bookingFee - discount;
+        double tax = taxableAmount * TAX_RATE;
+
+        // Calculate final total
+        double total = subtotal + bookingFee + tax - discount;
+
+        // Ensure total is not negative
+        if (total < 0) {
+            total = 0;
+        }
+
+        PriceBreakdownDTO breakdown = new PriceBreakdownDTO(
+                basePrice,
+                seatCount,
+                subtotal,
+                bookingFee,
+                tax,
+                discount,
+                total);
+
+        System.out.println("Price Breakdown: " + breakdown);
+        return breakdown;
     }
 
     // Helper method to reserve seats

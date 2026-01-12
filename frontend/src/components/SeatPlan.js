@@ -85,7 +85,13 @@ function SeatPlan({ movie }) {
     selectedSeatText = selectedSeats.map((seat) => seat + 1).join(', ');
   }
 
-  let totalPrice = selectedSeats.length * movies[0].price;
+  // Calculate price breakdown (matching backend UC-18 logic)
+  const basePrice = movies[0].price;
+  const seatCount = selectedSeats.length;
+  const subtotal = basePrice * seatCount;
+  const bookingFee = subtotal * 0.10; // 10% booking fee
+  const tax = (subtotal + bookingFee) * 0.10; // 10% tax
+  const totalPrice = subtotal + bookingFee + tax;
 
   const isAnySeatSelected = selectedSeats.length > 0;
 
@@ -178,10 +184,24 @@ function SeatPlan({ movie }) {
             <span></span>
           )}{' '}
           {selectedSeats.length > 0 && (
-            <>
-              for the price of{' '}
-              <span className='total font-semibold'>{totalPrice}€</span>
-            </>
+            <div className='mt-4 text-sm'>
+              <div className='flex justify-between mb-1'>
+                <span>Subtotal ({seatCount} × €{basePrice.toFixed(2)}):</span>
+                <span>€{subtotal.toFixed(2)}</span>
+              </div>
+              <div className='flex justify-between mb-1'>
+                <span>Booking Fee (10%):</span>
+                <span>€{bookingFee.toFixed(2)}</span>
+              </div>
+              <div className='flex justify-between mb-1'>
+                <span>Tax (10%):</span>
+                <span>€{tax.toFixed(2)}</span>
+              </div>
+              <div className='flex justify-between font-bold text-base border-t pt-2 mt-2'>
+                <span>Total:</span>
+                <span className='total'>€{totalPrice.toFixed(2)}</span>
+              </div>
+            </div>
           )}
         </p>
 
@@ -191,7 +211,7 @@ function SeatPlan({ movie }) {
               className='bg-green-500 hover:bg-green-700 text-white rounded px-3 py-2 text-sm font-semibold cursor-pointer'
               onClick={handleButtonClick}
             >
-              Buy at <span className='total font-semibold'>{totalPrice}€</span>
+              Buy at <span className='total font-semibold'>€{totalPrice.toFixed(2)}</span>
             </button>
           </div>
         ) : (

@@ -27,13 +27,20 @@ public class Order {
     private String movieGenres;
     private String movieLanguage;
     private String movieSession;
-    private double moviePrice;
+    private double moviePrice; // Base price per seat
     private int movieRuntime;
     @ElementCollection
     private List<Integer> seat;
 
     @Column(nullable = false)
     private String orderStatus = "PENDING"; // PENDING, CONFIRMED, CANCELLED, PAYMENT_FAILED
+
+    // Price breakdown fields for UC-18
+    private double subtotal; // Base price × seat count
+    private double bookingFee; // Booking service fee
+    private double tax; // Applicable taxes
+    private double discount; // Promo code discount (UC-19)
+    private double totalAmount; // Final total amount
 
     public Order() {
     }
@@ -162,6 +169,46 @@ public class Order {
 
     public Date getCreatedAt() {
         return createdAt;
+    }
+
+    public double getSubtotal() {
+        return subtotal;
+    }
+
+    public void setSubtotal(double subtotal) {
+        this.subtotal = subtotal;
+    }
+
+    public double getBookingFee() {
+        return bookingFee;
+    }
+
+    public void setBookingFee(double bookingFee) {
+        this.bookingFee = bookingFee;
+    }
+
+    public double getTax() {
+        return tax;
+    }
+
+    public void setTax(double tax) {
+        this.tax = tax;
+    }
+
+    public double getDiscount() {
+        return discount;
+    }
+
+    public void setDiscount(double discount) {
+        this.discount = discount;
+    }
+
+    public double getTotalAmount() {
+        return totalAmount;
+    }
+
+    public void setTotalAmount(double totalAmount) {
+        this.totalAmount = totalAmount;
     }
 
     @PrePersist
