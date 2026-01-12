@@ -473,4 +473,67 @@ public class OrderController {
                     .println("Released seats " + seatsToRelease + " for movie " + movieId + " session " + movieSession);
         }
     }
+
+    // UC-16: View Booking History
+    @GetMapping("/api/v1/order/user/{userId}")
+    public ResponseEntity<?> getBookingHistory(@PathVariable Long userId) {
+        try {
+            // Fetch all orders for the user sorted by order date (newest first)
+            List<Order> orders = orderRepository.findByCustomerId(userId);
+
+            if (orders.isEmpty()) {
+                return ResponseEntity.ok()
+                        .body(Map.of(
+                                "success", true,
+                                "bookings", new ArrayList<>(),
+                                "message", "No bookings found"));
+            }
+
+            // Sort by order date descending (newest first)
+            orders.sort((o1, o2) -> {
+                try {
+                    Date date1 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").parse(o1.getOrderDate());
+                    Date date2 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").parse(o2.getOrderDate());
+                    return date2.compareTo(date1);
+                } catch (ParseException e) {
+                    return 0;
+                }
+            });
+
+            // Build response with booking details
+            List<Map<String, Object>> bookings = new ArrayList<>();
+            for (Order order : orders) {
+                Map<String, Object> booking = new HashMap<>();
+                booking.put("orderId", order.getOrderId());
+                booking.put("bookingReference", order.getBookingReference() != null ? order.getBookingReference() : "");
+                booking.put("orderStatus", order.getOrderStatus());
+                booking.put("orderDate", order.getOrderDate());
+                booking.put("movieTitle", order.getMovieTitle());
+                booking.put("movieSession", order.getMovieSession());
+                booking.put("movieGenres", order.getMovieGenres());
+                booking.put("seatCount", order.getSeat() != null ? order.getSeat().size() : 0);
+                booking.put("seats", order.getSeat());
+                booking.put("totalAmount", order.getTotalAmount());
+                booking.put("paymentMethod", order.getPaymentMethod() != null ? order.getPaymentMethod() : "");
+                booking.put("transactionId", order.getTransactionId() != null ? order.getTransactionId() : "");
+
+                if (order.getPaymentDate() != null) {
+                    booking.put("paymentDate", order.getPaymentDate().toString());
+                }
+
+                bookings.add(booking);
+            }
+
+            return ResponseEntity.ok()
+                    .body(Map.of(
+                            "success", true,
+                            "bookings", bookings,
+                            "totalBookings", bookings.size()));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Error retrieving booking history: " + e.getMessage()));
+        }
+    }
 }
