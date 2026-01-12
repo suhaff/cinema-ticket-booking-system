@@ -45,6 +45,12 @@ function PaymentModal({ isOpen, onClose, onConfirm, priceBreakdown }) {
             <span>Tax:</span>
             <span>€{priceBreakdown?.tax?.toFixed(2) || '0.00'}</span>
           </div>
+          {priceBreakdown?.discount > 0 && (
+            <div className="flex justify-between mb-2 text-green-600">
+              <span>Discount:</span>
+              <span>-€{priceBreakdown?.discount?.toFixed(2)}</span>
+            </div>
+          )}
           <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2">
             <span>Total:</span>
             <span>€{priceBreakdown?.total?.toFixed(2) || '0.00'}</span>

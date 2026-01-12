@@ -3,8 +3,10 @@ package com.cinema.backend.controllers;
 import com.cinema.backend.dto.PriceBreakdownDTO;
 import com.cinema.backend.models.CinemaHall;
 import com.cinema.backend.models.Order;
+import com.cinema.backend.models.PromoCode;
 import com.cinema.backend.repositories.CinemaHallRepository;
 import com.cinema.backend.repositories.OrderRepository;
+import com.cinema.backend.repositories.PromoCodeRepository;
 import com.cinema.backend.services.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -26,6 +28,9 @@ public class OrderController {
 
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private PromoCodeRepository promoCodeRepository;
 
     @PostMapping("/api/v1/order")
     ResponseEntity<?> newOrder(@RequestBody Order newOrder) {
@@ -71,12 +76,41 @@ public class OrderController {
             // Set order status to PENDING (reserved)
             newOrder.setOrderStatus("PENDING");
 
-            // UC-18: Calculate price breakdown
+            // UC-19: Handle promo code if provided
+            double discount = 0.0;
+            String promoCodeApplied = null;
+
+            if (newOrder.getUserName() != null && newOrder.getUserName().contains("PROMO:")) {
+                // Extract promo code from userName field (temporary solution)
+                String[] parts = newOrder.getUserName().split("PROMO:");
+                if (parts.length == 2) {
+                    String promoCode = parts[1].trim();
+                    newOrder.setUserName(parts[0].trim()); // Remove promo code from userName
+
+                    // Validate and apply promo code
+                    Optional<PromoCode> promoOptional = promoCodeRepository.findByCode(promoCode.toUpperCase());
+                    if (promoOptional.isPresent()) {
+                        PromoCode promo = promoOptional.get();
+                        if (promo.isValid()) {
+                            // Calculate discount based on type
+                            double baseAmount = newOrder.getMoviePrice() * newOrder.getSeat().size();
+                            if ("PERCENTAGE".equals(promo.getDiscountType())) {
+                                discount = (baseAmount * promo.getDiscountValue()) / 100.0;
+                            } else if ("FIXED_AMOUNT".equals(promo.getDiscountType())) {
+                                discount = promo.getDiscountValue();
+                            }
+                            promoCodeApplied = promo.getCode();
+                            System.out.println("Promo code " + promoCode + " applied. Discount: $" + discount);
+                        }
+                    }
+                }
+            }
+
+            // UC-18: Calculate price breakdown with discount
             PriceBreakdownDTO priceBreakdown = calculatePriceBreakdown(
                     newOrder.getMoviePrice(),
                     newOrder.getSeat().size(),
-                    0.0 // discount will be applied by UC-19
-            );
+                    discount);
 
             // Store price breakdown in order
             newOrder.setSubtotal(priceBreakdown.getSubtotal());
@@ -87,6 +121,16 @@ public class OrderController {
 
             // Save booking with PENDING status
             Order savedOrder = orderRepository.save(newOrder);
+
+            // Increment promo code usage if applied
+            if (promoCodeApplied != null) {
+                Optional<PromoCode> promoOptional = promoCodeRepository.findByCode(promoCodeApplied);
+                if (promoOptional.isPresent()) {
+                    PromoCode promo = promoOptional.get();
+                    promo.incrementUsage();
+                    promoCodeRepository.save(promo);
+                }
+            }
 
             // Reserve seats in cinema hall (only if movieSession is provided)
             if (newOrder.getMovieSession() != null && !newOrder.getMovieSession().isEmpty()) {

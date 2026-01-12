@@ -13,7 +13,8 @@ async function BuyTickets(BASE_URL, formData) {
       console.log('Order successful', data);
       return data; // Return order data including orderId and priceBreakdown
     } else {
-      console.error('Order failed');
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Order failed:', response.status, errorData);
       return null;
     }
   } catch (error) {

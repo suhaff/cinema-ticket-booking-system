@@ -8,6 +8,7 @@ import generateRandomOccupiedSeats from '../utils/GenerateRandomOccupiedSeats';
 import SeatSelector from './SeatSelector';
 import SeatShowcase from './SeatShowcase';
 import PaymentModal from './PaymentModal';
+import ValidatePromoCode from '../API/ValidatePromoCode';
 
 const movies = [
   {
@@ -32,6 +33,12 @@ function SeatPlan({ movie }) {
   // Payment modal state
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [pendingOrder, setPendingOrder] = useState(null);
+
+  // Promo code state
+  const [promoCode, setPromoCode] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [promoMessage, setPromoMessage] = useState('');
+  const [promoError, setPromoError] = useState(false);
 
   useEffect(() => {
     const storedMovieSession = JSON.parse(localStorage.getItem('movieSession'));
@@ -96,10 +103,52 @@ function SeatPlan({ movie }) {
   const seatCount = selectedSeats.length;
   const subtotal = basePrice * seatCount;
   const bookingFee = subtotal * 0.10; // 10% booking fee
-  const tax = (subtotal + bookingFee) * 0.10; // 10% tax
-  const totalPrice = subtotal + bookingFee + tax;
+  
+  // Apply discount if promo code is valid
+  let discount = 0;
+  if (appliedPromo) {
+    if (appliedPromo.discountType === 'PERCENTAGE') {
+      discount = (subtotal * appliedPromo.discountValue) / 100;
+    } else if (appliedPromo.discountType === 'FIXED_AMOUNT') {
+      discount = appliedPromo.discountValue;
+    }
+  }
+  
+  // Calculate tax on (subtotal + booking fee - discount) to match backend
+  const taxableAmount = subtotal + bookingFee - discount;
+  const tax = taxableAmount * 0.10; // 10% tax
+  
+  const totalPrice = subtotal + bookingFee + tax - discount;
 
   const isAnySeatSelected = selectedSeats.length > 0;
+
+  // Handle promo code validation
+  const handleApplyPromoCode = async () => {
+    if (!promoCode.trim()) {
+      setPromoMessage('Please enter a promo code');
+      setPromoError(true);
+      return;
+    }
+
+    const result = await ValidatePromoCode(promoCode.trim().toUpperCase());
+    
+    if (result.success) {
+      setAppliedPromo(result.data);
+      setPromoMessage(`Promo code applied! ${result.data.discountType === 'PERCENTAGE' ? result.data.discountValue + '% off' : '€' + result.data.discountValue + ' off'}`);
+      setPromoError(false);
+    } else {
+      setAppliedPromo(null);
+      setPromoMessage(result.message);
+      setPromoError(true);
+    }
+  };
+
+  const handleRemovePromoCode = () => {
+    setAppliedPromo(null);
+    setPromoCode('');
+    setPromoMessage('');
+    setPromoError(false);
+  };
 
   const handleButtonClick = async (e) => {
     e.preventDefault();
@@ -136,7 +185,7 @@ function SeatPlan({ movie }) {
         movieSession: movieSession.time,
         moviePrice: order.movie.price,
         seat: order.seat,
-        userName: order.userName,
+        userName: appliedPromo ? `${order.userName} PROMO:${appliedPromo.code}` : order.userName,
       };
 
       // Backend handles seat reservation, so we don't need to call updateSeatsInHall
@@ -228,6 +277,12 @@ function SeatPlan({ movie }) {
                 <span>Tax (10%):</span>
                 <span>€{tax.toFixed(2)}</span>
               </div>
+              {discount > 0 && (
+                <div className='flex justify-between mb-1 text-green-600'>
+                  <span>Discount ({appliedPromo.code}):</span>
+                  <span>-€{discount.toFixed(2)}</span>
+                </div>
+              )}
               <div className='flex justify-between font-bold text-base border-t pt-2 mt-2'>
                 <span>Total:</span>
                 <span className='total'>€{totalPrice.toFixed(2)}</span>
@@ -235,6 +290,42 @@ function SeatPlan({ movie }) {
             </div>
           )}
         </p>
+
+        {/* Promo Code Section */}
+        {isAnySeatSelected && (
+          <div className='my-4 w-full max-w-md'>
+            <div className='flex gap-2'>
+              <input
+                type='text'
+                placeholder='Enter promo code'
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                disabled={appliedPromo !== null}
+                className='flex-1 px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+              />
+              {appliedPromo ? (
+                <button
+                  onClick={handleRemovePromoCode}
+                  className='bg-red-500 hover:bg-red-700 text-white rounded px-4 py-2 text-sm font-semibold'
+                >
+                  Remove
+                </button>
+              ) : (
+                <button
+                  onClick={handleApplyPromoCode}
+                  className='bg-blue-500 hover:bg-blue-700 text-white rounded px-4 py-2 text-sm font-semibold'
+                >
+                  Apply
+                </button>
+              )}
+            </div>
+            {promoMessage && (
+              <p className={`mt-2 text-sm ${promoError ? 'text-red-500' : 'text-green-600'}`}>
+                {promoMessage}
+              </p>
+            )}
+          </div>
+        )}
 
         {isAnySeatSelected ? (
           <div>
