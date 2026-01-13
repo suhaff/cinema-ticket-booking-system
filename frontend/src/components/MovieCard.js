@@ -1,7 +1,7 @@
-import React from "react";
-import MovieSessions from "../mockData/MovieSessions";
-import formatDate from "../utils/formatDate";
-import SessionInfo from "./SessionInfo";
+import React from 'react';
+import MovieSessions from '../mockData/MovieSessions';
+import formatDate from '../utils/formatDate';
+import SessionInfo from './SessionInfo';
 
 const MovieCard = ({ movie, hallNumber }) => {
     const movieSessions = MovieSessions(movie, hallNumber);

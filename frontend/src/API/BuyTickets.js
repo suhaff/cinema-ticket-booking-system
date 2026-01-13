@@ -9,15 +9,17 @@ async function BuyTickets(BASE_URL, formData) {
     });
 
     if (response.ok) {
-      console.log('Order successful');
-      return true;
+      const data = await response.json();
+      console.log('Order successful', data);
+      return data; // Return order data including orderId and priceBreakdown
     } else {
-      console.error('Order failed');
-      return false;
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Order failed:', response.status, errorData);
+      return null;
     }
   } catch (error) {
     console.error('Error occurred while ordering:', error);
-    return false;
+    return null;
   }
 }
 

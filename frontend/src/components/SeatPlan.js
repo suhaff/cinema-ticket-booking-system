@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BuyTickets from '../API/BuyTickets';
+import MakePayment from '../API/MakePayment';
 import getSeatPlan from '../API/GetSeatPlan';
 import updateSeatsInHall from '../API/UpdateSeatsInHall';
 import generateRandomOccupiedSeats from '../utils/GenerateRandomOccupiedSeats';
 import SeatSelector from './SeatSelector';
 import SeatShowcase from './SeatShowcase';
+import PaymentModal from './PaymentModal';
+import ValidatePromoCode from '../API/ValidatePromoCode';
 
 const movies = [
   {
@@ -26,6 +29,16 @@ function SeatPlan({ movie }) {
   const [userId, setUserId] = useState('');
 
   const [seatPlan, setSeatPlan] = useState(null);
+  
+  // Payment modal state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [pendingOrder, setPendingOrder] = useState(null);
+
+  // Promo code state
+  const [promoCode, setPromoCode] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [promoMessage, setPromoMessage] = useState('');
+  const [promoError, setPromoError] = useState(false);
 
   useEffect(() => {
     const storedMovieSession = JSON.parse(localStorage.getItem('movieSession'));
@@ -85,9 +98,57 @@ function SeatPlan({ movie }) {
     selectedSeatText = selectedSeats.map((seat) => seat + 1).join(', ');
   }
 
-  let totalPrice = selectedSeats.length * movies[0].price;
+  // Calculate price breakdown (matching backend UC-18 logic)
+  const basePrice = movies[0].price;
+  const seatCount = selectedSeats.length;
+  const subtotal = basePrice * seatCount;
+  const bookingFee = subtotal * 0.10; // 10% booking fee
+  
+  // Apply discount if promo code is valid
+  let discount = 0;
+  if (appliedPromo) {
+    if (appliedPromo.discountType === 'PERCENTAGE') {
+      discount = (subtotal * appliedPromo.discountValue) / 100;
+    } else if (appliedPromo.discountType === 'FIXED_AMOUNT') {
+      discount = appliedPromo.discountValue;
+    }
+  }
+  
+  // Calculate tax on (subtotal + booking fee - discount) to match backend
+  const taxableAmount = subtotal + bookingFee - discount;
+  const tax = taxableAmount * 0.10; // 10% tax
+  
+  const totalPrice = subtotal + bookingFee + tax - discount;
 
   const isAnySeatSelected = selectedSeats.length > 0;
+
+  // Handle promo code validation
+  const handleApplyPromoCode = async () => {
+    if (!promoCode.trim()) {
+      setPromoMessage('Please enter a promo code');
+      setPromoError(true);
+      return;
+    }
+
+    const result = await ValidatePromoCode(promoCode.trim().toUpperCase());
+    
+    if (result.success) {
+      setAppliedPromo(result.data);
+      setPromoMessage(`Promo code applied! ${result.data.discountType === 'PERCENTAGE' ? result.data.discountValue + '% off' : '€' + result.data.discountValue + ' off'}`);
+      setPromoError(false);
+    } else {
+      setAppliedPromo(null);
+      setPromoMessage(result.message);
+      setPromoError(true);
+    }
+  };
+
+  const handleRemovePromoCode = () => {
+    setAppliedPromo(null);
+    setPromoCode('');
+    setPromoMessage('');
+    setPromoError(false);
+  };
 
   const handleButtonClick = async (e) => {
     e.preventDefault();
@@ -121,32 +182,49 @@ function SeatPlan({ movie }) {
         movieGenres: order.movie.genres,
         movieRuntime: order.movie.runtime,
         movieLanguage: order.movie.language,
+        movieSession: movieSession.time,
         moviePrice: order.movie.price,
         seat: order.seat,
-        userName: order.userName,
+        userName: appliedPromo ? `${order.userName} PROMO:${appliedPromo.code}` : order.userName,
       };
 
-      const hallUpdate = {
-        movieId: movie.id,
-        movieSession: movieSession.time,
-        orderTime: order.orderDate,
-        updatedSeats: updatedOccupiedSeats,
-      };
-
-      const updateSuccess = await updateSeatsInHall(BASE_URL, hallUpdate);
-
-      if (updateSuccess) {
-        const buyTickets = await BuyTickets(BASE_URL, myOrder);
-        if (buyTickets) {
-          setSuccessPopupVisible(true);
-          setTimeout(() => {
-            setSuccessPopupVisible(false);
-            navigate('/');
-          }, 2000);
-        }
+      // Backend handles seat reservation, so we don't need to call updateSeatsInHall
+      // The order creation endpoint will reserve seats automatically
+      const orderResponse = await BuyTickets(BASE_URL, myOrder);
+      
+      if (orderResponse && orderResponse.orderId) {
+        // Order created successfully with PENDING status
+        // Show payment modal for user to choose payment method
+        setPendingOrder(orderResponse);
+        setShowPaymentModal(true);
       } else {
-        console.error('Failed to update occupied seats in the database');
+        console.error('Failed to create order');
+        alert('Failed to create booking. Please try again.');
       }
+    }
+  };
+
+  // Handle payment confirmation from modal
+  const handlePaymentConfirm = async (paymentDetails) => {
+    if (!pendingOrder) return;
+
+    const orderId = pendingOrder.orderId;
+    
+    // Process payment with selected method
+    const paymentResponse = await MakePayment(BASE_URL, orderId, paymentDetails);
+    
+    if (paymentResponse && paymentResponse.success) {
+      // Payment successful - booking confirmed
+      console.log('Payment successful:', paymentResponse);
+      setShowPaymentModal(false);
+      
+      // Navigate to confirmation page instead of showing popup
+      navigate(`/booking-confirmation/${orderId}`);
+    } else {
+      // Payment failed
+      console.error('Payment failed:', paymentResponse);
+      setShowPaymentModal(false);
+      alert('Payment failed: ' + (paymentResponse?.message || 'Unknown error. Please try again.'));
     }
   };
 
@@ -186,12 +264,68 @@ function SeatPlan({ movie }) {
             <span></span>
           )}{' '}
           {selectedSeats.length > 0 && (
-            <>
-              for the price of{' '}
-              <span className='total font-semibold'>{totalPrice}€</span>
-            </>
+            <div className='mt-4 text-sm'>
+              <div className='flex justify-between mb-1'>
+                <span>Subtotal ({seatCount} × €{basePrice.toFixed(2)}):</span>
+                <span>€{subtotal.toFixed(2)}</span>
+              </div>
+              <div className='flex justify-between mb-1'>
+                <span>Booking Fee (10%):</span>
+                <span>€{bookingFee.toFixed(2)}</span>
+              </div>
+              <div className='flex justify-between mb-1'>
+                <span>Tax (10%):</span>
+                <span>€{tax.toFixed(2)}</span>
+              </div>
+              {discount > 0 && (
+                <div className='flex justify-between mb-1 text-green-600'>
+                  <span>Discount ({appliedPromo.code}):</span>
+                  <span>-€{discount.toFixed(2)}</span>
+                </div>
+              )}
+              <div className='flex justify-between font-bold text-base border-t pt-2 mt-2'>
+                <span>Total:</span>
+                <span className='total'>€{totalPrice.toFixed(2)}</span>
+              </div>
+            </div>
           )}
         </p>
+
+        {/* Promo Code Section */}
+        {isAnySeatSelected && (
+          <div className='my-4 w-full max-w-md'>
+            <div className='flex gap-2'>
+              <input
+                type='text'
+                placeholder='Enter promo code'
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                disabled={appliedPromo !== null}
+                className='flex-1 px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+              />
+              {appliedPromo ? (
+                <button
+                  onClick={handleRemovePromoCode}
+                  className='bg-red-500 hover:bg-red-700 text-white rounded px-4 py-2 text-sm font-semibold'
+                >
+                  Remove
+                </button>
+              ) : (
+                <button
+                  onClick={handleApplyPromoCode}
+                  className='bg-blue-500 hover:bg-blue-700 text-white rounded px-4 py-2 text-sm font-semibold'
+                >
+                  Apply
+                </button>
+              )}
+            </div>
+            {promoMessage && (
+              <p className={`mt-2 text-sm ${promoError ? 'text-red-500' : 'text-green-600'}`}>
+                {promoMessage}
+              </p>
+            )}
+          </div>
+        )}
 
         {isAnySeatSelected ? (
           <div>
@@ -199,7 +333,7 @@ function SeatPlan({ movie }) {
               className='bg-green-500 hover:bg-green-700 text-white rounded px-3 py-2 text-sm font-semibold cursor-pointer'
               onClick={handleButtonClick}
             >
-              Buy at <span className='total font-semibold'>{totalPrice}€</span>
+              Buy at <span className='total font-semibold'>€{totalPrice.toFixed(2)}</span>
             </button>
           </div>
         ) : (
@@ -216,6 +350,14 @@ function SeatPlan({ movie }) {
           </div>
         )}
       </div>
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onConfirm={handlePaymentConfirm}
+        priceBreakdown={pendingOrder?.priceBreakdown}
+      />
     </div>
   );
 }

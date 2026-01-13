@@ -1,4 +1,4 @@
-import filterValidMovies from "../utils/filterValidMovies";
+import filterValidMovies from '../utils/filterValidMovies';
 async function FetchMoviesBySearch(ACCESS_TOKEN, page, searchText) {
     const url = `https://api.themoviedb.org/3/search/multi?api_key=${ACCESS_TOKEN}&language=en-US&query=${encodeURIComponent(
         searchText
