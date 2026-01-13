@@ -5,6 +5,7 @@ import MakePayment from '../API/MakePayment';
 import getSeatPlan from '../API/GetSeatPlan';
 import updateSeatsInHall from '../API/UpdateSeatsInHall';
 import generateRandomOccupiedSeats from '../utils/GenerateRandomOccupiedSeats';
+import getMovieTypes from '../utils/getMovieTypes';
 import SeatSelector from './SeatSelector';
 import SeatShowcase from './SeatShowcase';
 import PaymentModal from './PaymentModal';
@@ -18,7 +19,7 @@ const movies = [
   },
 ];
 
-function SeatPlan({ movie }) {
+function SeatPlan({ movie, selectedSession }) {
   const BASE_URL = process.env.REACT_APP_BASE_URL;
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [successPopupVisible, setSuccessPopupVisible] = useState(false);
@@ -41,11 +42,32 @@ function SeatPlan({ movie }) {
   const [promoError, setPromoError] = useState(false);
 
   useEffect(() => {
-    const storedMovieSession = JSON.parse(localStorage.getItem('movieSession'));
-    if (storedMovieSession) {
-      setMovieSession(storedMovieSession);
+    const handleStorageChange = () => {
+      const storedMovieSession = JSON.parse(localStorage.getItem('movieSession'));
+      if (storedMovieSession) {
+        setMovieSession(storedMovieSession);
+        // Reset selected seats when session changes
+        setSelectedSeats([]);
+        setRecommendedSeat(null);
+      }
+    };
+
+    // Use selectedSession prop if provided, otherwise fall back to localStorage
+    if (selectedSession) {
+      setMovieSession(selectedSession);
+      setSelectedSeats([]);
+      setRecommendedSeat(null);
+    } else {
+      handleStorageChange();
     }
-  }, []);
+
+    // Listen for storage changes from other components
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [selectedSession]);
 
   useEffect(() => {
     const fetchSeatPlan = async () => {
@@ -157,6 +179,14 @@ function SeatPlan({ movie }) {
     if (isAnySeatSelected) {
       const orderSeats = selectedSeats;
       const updatedOccupiedSeats = [...orderSeats, ...occupiedSeats];
+      const movieTypes = getMovieTypes(movie.id);
+      const movieCast = movie.credits?.cast
+        ?.slice(0, 5)
+        .map((actor) => actor.name)
+        .join(', ') || 'N/A';
+      const spokenLanguages = movie.spoken_languages
+        ?.map((lang) => lang.english_name)
+        .join(', ') || movie.original_language || 'N/A';
 
       const order = {
         customerId: userId || Math.floor(Math.random() * 1000000),
@@ -171,6 +201,9 @@ function SeatPlan({ movie }) {
           runtime: movie.runtime,
           language: movie.original_language,
           price: movies[0].price,
+          type: movieTypes.join(', '),
+          cast: movieCast,
+          spokenLanguages: spokenLanguages,
         },
       };
 
@@ -184,6 +217,9 @@ function SeatPlan({ movie }) {
         movieLanguage: order.movie.language,
         movieSession: movieSession.time,
         moviePrice: order.movie.price,
+        movieType: order.movie.type,
+        movieCast: order.movie.cast,
+        spokenLanguages: order.movie.spokenLanguages,
         seat: order.seat,
         userName: appliedPromo ? `${order.userName} PROMO:${appliedPromo.code}` : order.userName,
       };
