@@ -37,6 +37,12 @@ function NavBar({ user, onSearch, onLogin, onLogout }) {
                 >
                   My Bookings
                 </a>
+                <a
+                  href='/profile'
+                  className={`bg-white text-red-500 hover:text-white hover:bg-red-700 rounded px-3 py-1 text-sm font-semibold cursor-pointer h-9 flex items-center justify-center`}
+                >
+                  Profile
+                </a>
                 <button
                   className={`bg-white text-red-500 hover:text-white hover:bg-red-700 rounded px-3 py-1 text-sm font-semibold cursor-pointer h-9`}
                   onClick={handleLogout}

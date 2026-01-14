@@ -7,6 +7,7 @@ import Home from './pages/Home';
 import MovieDetails from './pages/MovieDetails';
 import BookingConfirmation from './pages/BookingConfirmation';
 import BookingHistory from './pages/BookingHistory';
+import Profile from './pages/Profile';
 import { isLoggedIn, login, logout } from './utils/Auth';
 
 function App() {
@@ -51,6 +52,7 @@ function App() {
           <Route path='/movie/:id' element={<MovieDetails />} />
           <Route path='/booking-confirmation/:orderId' element={<BookingConfirmation />} />
           <Route path='/booking-history' element={<BookingHistory />} />
+          <Route path="/profile" element={<Profile user={user} />} />
         </Routes>
         <Footer />
       </BrowserRouter>
