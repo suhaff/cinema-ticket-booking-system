@@ -32,6 +32,7 @@ const Profile = ({ user }) => {
     email: '',
     password: '' ,
   });
+  const [modalError, setModalError] = useState('');
 
   useEffect(() => {
     const userId = localStorage.getItem('userId');
@@ -68,13 +69,36 @@ const Profile = ({ user }) => {
   if (loading) return <div className="text-center mt-10 text-gray-500">Loading your profile...</div>;
   if (!userData) return <div className="text-center mt-10">Please log in to view settings.</div>;
 
-  const handleUpdateSubmit = (e) => {
+  const handleUpdateSubmit = async (e) => {
     e.preventDefault();
-    console.log("Submitting Update to Backend:", formData);
-    // This is where you will call your Spring Boot update endpoint later
-    setIsModalOpen(false);
-    alert("Profile Update Request Sent!");
-  };
+    setModalError('');
+    const userId = localStorage.getItem('userId');
+
+    if (formData.password && formData.password.length < 8) {
+        setModalError("Password must be at least 8 characters long.");
+        return; // Stop the function here
+    }
+
+    try {
+        const response = await fetch(`http://localhost:8080/api/v1/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+        });
+
+        if (response.ok) {
+        const data = await response.json();
+        setUserData(data);
+        setIsModalOpen(false);
+        alert("Update successful!");
+        } else {
+        const msg = await response.text();
+        setModalError(msg || "Update failed.");
+        }
+    } catch (err) {
+        setModalError("Connection error.");
+    }
+};
 
   const renderGenres = () => {
     if (!userData?.genres || userData.genres === "") {
@@ -125,7 +149,7 @@ const Profile = ({ user }) => {
               <FaTimes className="cursor-pointer text-gray-400 hover:text-red-500" onClick={() => setIsModalOpen(false)} />
             </div>
             
-            <form onSubmit={handleUpdateSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleUpdateSubmit} className="p-6 space-y-4 text-left">
               <div>
                 <label className="block text-sm font-semibold text-gray-600 mb-1">First Name</label>
                 <input 
@@ -153,6 +177,12 @@ const Profile = ({ user }) => {
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
                 />
               </div>
+
+              {modalError && (
+                <p className=" text-red-600 p-2 rounded-lg text-sm mb-4">
+                    {modalError}
+                </p>
+                )}
               
               <div className="flex space-x-3 pt-4">
                 <button 
@@ -182,11 +212,6 @@ const Profile = ({ user }) => {
         </div>
         <div className="p-6">
           <div className="flex flex-wrap gap-2">
-            {/* {['Action', 'Comedy', 'Horror'].map(genre => (
-              <span key={genre} className="px-4 py-1 bg-red-50 text-red-600 rounded-full text-sm font-medium border border-red-100">
-                {genre}
-              </span>
-            ))} */}
             {renderGenres()}
           </div>
         </div>

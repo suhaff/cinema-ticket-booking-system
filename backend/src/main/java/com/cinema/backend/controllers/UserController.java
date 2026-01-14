@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -53,4 +54,30 @@ public class UserController {
         return ResponseEntity.notFound().build();
     }
 }
+
+    @PutMapping("/api/v1/users/{id}")
+    public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody User userDetails) {
+        User user = userService.getUserById(id);
+        if (user == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Update fields
+        user.setName(userDetails.getName());
+        user.setSurname(userDetails.getSurname());
+
+        // Password Update & Validation
+        String newPassword = userDetails.getPassword();
+        if (newPassword != null && !newPassword.isEmpty()) {
+            // Validation check
+            if (newPassword.length() < 8) {
+                return ResponseEntity.badRequest().body("Password must be at least 8 characters long.");
+            }
+            user.setPassword(newPassword); 
+        }
+
+        User updatedUser = userService.registerUser(user);
+        // Returning a User object here
+        return ResponseEntity.ok(updatedUser);
+    }
 }

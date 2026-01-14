@@ -3,6 +3,7 @@ import Login from '../API/Login';
 
 function LoginForm({ onClose, onLogin }) {
   const BASE_URL = process.env.REACT_APP_BASE_URL;
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -32,23 +33,30 @@ function LoginForm({ onClose, onLogin }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     try {
-      const userData = await Login(BASE_URL, formData.email, formData.password);
+    const response = await fetch(`${process.env.REACT_APP_BASE_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+          email: formData.email, 
+          password: formData.password 
+        }),
+    });
 
-      if (userData) {
-        setFormData({
-          email: '',
-          password: '',
-        });
-        onClose();
-        onLogin(userData);
-      } else {
-        console.error('Login was unsuccessful.');
-      }
-    } catch (error) {
-      console.error(error);
+    const data = await response.json();
+
+    if (response.ok) {
+      onLogin(data); // Success
+      onClose();
+    } else {
+      // If status is 401 or similar, show the red text
+      setError("Invalid email or password. Please try again.");
     }
-  };
+  } catch (err) {
+    setError("Server error. Please try again later.");
+  }
+};
 
   return (
     <div className='container mx-auto mt-5' ref={formRef}>
@@ -85,6 +93,7 @@ function LoginForm({ onClose, onLogin }) {
             required
           />
         </div>
+        {error && <p className="text-red-500 text-sm mb-4 text-center font-medium">{error}</p>}
         <div className='text-center'>
           <button
             type='submit'
