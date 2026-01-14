@@ -9,6 +9,7 @@ import BookingConfirmation from './pages/BookingConfirmation';
 import BookingHistory from './pages/BookingHistory';
 import Profile from './pages/Profile';
 import { isLoggedIn, login, logout } from './utils/Auth';
+import { AuthProvider } from './utils/AuthContext';
 
 function App() {
   const [searchText, setSearchText] = useState('');
@@ -37,6 +38,7 @@ function App() {
 
   return (
     <div className='App'>
+      <AuthProvider>
       <BrowserRouter>
         <NavBar
           user={user}
@@ -56,6 +58,7 @@ function App() {
         </Routes>
         <Footer />
       </BrowserRouter>
+      </AuthProvider>
     </div>
   );
 }

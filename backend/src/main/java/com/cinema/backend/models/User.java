@@ -1,8 +1,14 @@
 package com.cinema.backend.models;
 
-import jakarta.persistence.*;
-
 import java.util.Objects;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 
 @Entity
 @Table(name = "users")
@@ -16,6 +22,7 @@ public class User {
     private String surname;
     private String email;
     private String password;
+    private String genres;
 
     @Transient
     private String loginEmail;
@@ -26,12 +33,13 @@ public class User {
     public User() {
     }
 
-    public User(Long id, String name, String surname, String email, String password) {
+    public User(Long id, String name, String surname, String email, String password, String genres) {
         this.id = id;
         this.name = name;
         this.surname = surname;
         this.email = email;
         this.password = password;
+        this.genres = genres;
     }
 
     public User(String username, String encodedPassword) {
@@ -93,6 +101,21 @@ public class User {
         this.loginPassword = loginPassword;
     }
 
+    public String getGenres() {
+        return genres;
+    }
+
+    public void setGenres(Object genres) {
+    if (genres instanceof java.util.List) {
+        // converts the React array [28, 35] into the string "28,35"
+        this.genres = ((java.util.List<?>) genres).stream()
+                .map(Object::toString)
+                .collect(java.util.stream.Collectors.joining(","));
+    } else {
+        this.genres = (String) genres;
+    }
+}
+
     @Override
     public String toString() {
         return "User{" +
@@ -101,6 +124,7 @@ public class User {
                 ", surename='" + surname + '\'' +
                 ", email='" + email + '\'' +
                 ", password='" + password + '\'' +
+                ", genres='" + genres + '\'' +
                 '}';
     }
 
@@ -109,12 +133,12 @@ public class User {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         User user = (User) o;
-        return Objects.equals(id, user.id) && Objects.equals(name, user.name) && Objects.equals(surname, user.surname) && Objects.equals(email, user.email) && Objects.equals(password, user.password);
+        return Objects.equals(id, user.id) && Objects.equals(name, user.name) && Objects.equals(surname, user.surname) && Objects.equals(email, user.email) && Objects.equals(password, user.password) && Objects.equals(genres, user.genres);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, surname, email, password);
+        return Objects.hash(id, name, surname, email, password, genres);
     }
 
 

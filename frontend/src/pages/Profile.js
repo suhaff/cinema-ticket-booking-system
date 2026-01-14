@@ -1,17 +1,72 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaEdit, FaUser, FaLock, FaTicketAlt, FaFilm, FaTimes } from 'react-icons/fa';
 import BookingHistory from './BookingHistory'; 
+import { useAuth } from '../utils/AuthContext';
+
+const GENRE_OPTIONS = [
+  { id: 28, name: 'Action', emoji: '💥' },
+  { id: 12, name: 'Adventure', emoji: '🏞️' },
+  { id: 16, name: 'Animation', emoji: '📽️' },
+  { id: 35, name: 'Comedy', emoji: '😂' },
+  { id: 10751, name: 'Family', emoji: '❤️' },
+  { id: 14, name: 'Fantasy', emoji: '🧙‍♂️' },
+  { id: 9648, name: 'Mystery', emoji: '🔍' },
+  { id: 878, name: 'Sci-Fi', emoji: '🤖' },
+  { id: 18, name: 'Drama', emoji: '🎭' },
+  { id: 27, name: 'Horror', emoji: '👻' },
+  { id: 53, name: 'Thriller', emoji: '😱' },
+  { id: 10402, name: 'Music', emoji: '🎵' },
+  { id: 36, name: 'History', emoji: '📜' },
+  { id: 10752, name: 'War', emoji: '⚔️' },
+  { id: 10749, name: 'Romance', emoji: '💑' },
+  { id: 80, name: 'Crime', emoji: '🔫' }
+];
 
 const Profile = ({ user }) => {
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
-    name: user?.name || '',
-    surname: user?.surname || '',
-    email: user?.email || '',
-    password: '' 
+    name: '',
+    surname: '',
+    email: '',
+    password: '' ,
   });
 
-  if (!user) return <div className="text-center mt-10">Please log in to view settings.</div>;
+  useEffect(() => {
+    const userId = localStorage.getItem('userId');
+
+    if (!userId || !user) {
+    setUserData(null);
+    setLoading(false);
+    return;
+  }
+    
+    const fetchProfile = async () => {
+      try {
+        const response = await fetch(`${process.env.REACT_APP_BASE_URL}/users/${userId}`);
+        const data = await response.json();
+        console.log("Fetched Profile Data:", data);
+        setUserData(data);
+        // Sync the edit form with the new data
+        setFormData({
+            name: data.name,
+            surname: data.surname,
+            email: data.email,
+            password: ''
+        });
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [user]);
+
+  if (loading) return <div className="text-center mt-10 text-gray-500">Loading your profile...</div>;
+  if (!userData) return <div className="text-center mt-10">Please log in to view settings.</div>;
 
   const handleUpdateSubmit = (e) => {
     e.preventDefault();
@@ -21,9 +76,25 @@ const Profile = ({ user }) => {
     alert("Profile Update Request Sent!");
   };
 
+  const renderGenres = () => {
+    if (!userData?.genres || userData.genres === "") {
+        return <span className="text-gray-400 italic">No preferences set</span>;
+    }
+    
+    const ids = userData.genres.split(',').map(Number);
+    return ids.map(id => {
+      const genre = GENRE_OPTIONS.find(g => g.id === id);
+      return genre ? (
+        <span key={id} className="px-4 py-1 bg-red-50 text-red-600 rounded-full text-sm font-medium border border-red-100">
+          {genre.emoji} {genre.name}
+        </span>
+      ) : null;
+    });
+  };
+
   return (
     <div className="max-w-4xl mx-auto mt-10 p-4 space-y-6 relative">
-      <h1 className="text-3xl font-semibold text-gray-800 mb-8">Personal info</h1>
+      <h1 className="text-3xl font-semibold text-gray-800 mb-8">Personal information</h1>
       
       {/* SECTION 1: ACCOUNT DETAILS (UC-1) */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
@@ -39,8 +110,8 @@ const Profile = ({ user }) => {
         </div>
         
         <div className="divide-y divide-gray-100">
-          <InfoRow icon={<FaUser />} label="Name" value={`${user.name} ${user.surname || ''}`} />
-          <InfoRow icon={<FaTicketAlt />} label="Email" value={user.email} />
+          <InfoRow icon={<FaUser />} label="Name" value={`${userData.name} ${userData.surname || ''}`} />
+          <InfoRow icon={<FaTicketAlt />} label="Email" value={userData.email} />
           <InfoRow icon={<FaLock />} label="Password" value="••••••••" />
         </div>
       </div>
@@ -111,11 +182,12 @@ const Profile = ({ user }) => {
         </div>
         <div className="p-6">
           <div className="flex flex-wrap gap-2">
-            {['Action', 'Comedy', 'Horror'].map(genre => (
+            {/* {['Action', 'Comedy', 'Horror'].map(genre => (
               <span key={genre} className="px-4 py-1 bg-red-50 text-red-600 rounded-full text-sm font-medium border border-red-100">
                 {genre}
               </span>
-            ))}
+            ))} */}
+            {renderGenres()}
           </div>
         </div>
       </div>

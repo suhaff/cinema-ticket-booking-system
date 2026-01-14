@@ -14,6 +14,10 @@ async function Login(BASE_URL, email, password) {
 
     const userData = await response.json();
 
+    localStorage.setItem('userId', userData.userId);
+    localStorage.setItem('userName', userData.userName);
+    localStorage.setItem('userGenres', userData.genres);
+
     const expiryTime = new Date();
     expiryTime.setTime(expiryTime.getTime() + 5 * 60 * 1000);
 

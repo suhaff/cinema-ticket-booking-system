@@ -9,7 +9,7 @@ function RegistrationForm({ onClose }) {
     email: '',
     phone: '',
     password: '',
-    preferences:[],
+    genres:[],
   });
   const formRef = useRef(null);
 
@@ -38,9 +38,11 @@ const GENRE_OPTIONS = [
     }
   };
 
-  const handleGenreSelection = (selectedList) => {
-  // selectedList will be an array of genre objects from your Genres.js
-  setFormData({ ...formData, preferences: selectedList });
+  const toggleGenre = (genreId) => {
+    const updated = formData.genres.includes(genreId)
+      ? formData.genres.filter(id => id !== genreId)
+      : [...formData.genres, genreId];
+    setFormData({ ...formData, genres: updated });
   };
 
   useEffect(() => {
@@ -70,13 +72,14 @@ const GENRE_OPTIONS = [
         email: '',
         phone: '',
         password: '',
+        genres:[],
       });
     }
   };
 
   return (
     <div className='container mx-auto my-auto p-10' ref={formRef}>
-      <form onSubmit={handleSubmit} className='max-w-sm mx-auto'>
+      <form onSubmit={handleSubmit} className='max-w-md mx-auto'>
         <h2 className='text-2xl font-bold text-gray-800 mb-6 text-center'>Create Account</h2>
         <div className='space-y-4'>
           <label
@@ -152,13 +155,8 @@ const GENRE_OPTIONS = [
               <label key={genre.id} className='flex items-center space-x-2 cursor-pointer hover:bg-white p-1 rounded'>
                 <input
                   type='checkbox'
-                  checked={formData.preferences.includes(genre.id)}
-                  onChange={() => {
-                    const updated = formData.preferences.includes(genre.id)
-                      ? formData.preferences.filter(id => id !== genre.id)
-                      : [...formData.preferences, genre.id];
-                    setFormData({ ...formData, preferences: updated });
-                  }}
+                  checked={formData.genres.includes(genre.id)}
+                  onChange={() => toggleGenre(genre.id)}
                   className='text-red-500 rounded'
                 />
                 <span className='text-sm font-medium text-gray-600'>{genre.emoji} {genre.name}</span>

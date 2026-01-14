@@ -5,11 +5,13 @@ public class LoginResponseDTO {
     private String message;
     private String userName;
     private Long userId;
+    private String genres;
 
-    public LoginResponseDTO(String message, String userName, Long userId) {
+    public LoginResponseDTO(String message, String userName, Long userId, String genres) {
         this.message = message;
         this.userName = userName;
         this.userId = userId;
+        this.genres = genres;
     }
 
     public String getMessage() {
@@ -34,5 +36,13 @@ public class LoginResponseDTO {
 
     public void setUserId(Long userId) {
         this.userId = userId;
+    }
+
+    public String getGenres() {
+        return genres;
+    }
+
+    public void setGenres(String genres) {
+        this.genres = genres;
     }
 }
