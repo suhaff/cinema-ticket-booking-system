@@ -65,6 +65,7 @@ public class UserController {
         // Update fields
         user.setName(userDetails.getName());
         user.setSurname(userDetails.getSurname());
+        user.setGenres(userDetails.getGenres());
 
         // Password Update & Validation
         String newPassword = userDetails.getPassword();

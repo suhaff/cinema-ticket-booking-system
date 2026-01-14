@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaEdit, FaUser, FaLock, FaTicketAlt, FaFilm, FaTimes } from 'react-icons/fa';
 import BookingHistory from './BookingHistory'; 
-import { useAuth } from '../utils/AuthContext';
+import GenreModal from '../components/EditGenreModal';
 
 const GENRE_OPTIONS = [
   { id: 28, name: 'Action', emoji: '💥' },
@@ -25,6 +25,7 @@ const GENRE_OPTIONS = [
 const Profile = ({ user }) => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isGenreModalOpen, setIsGenreModalOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -98,22 +99,65 @@ const Profile = ({ user }) => {
     } catch (err) {
         setModalError("Connection error.");
     }
-};
+  };
+
+
 
   const renderGenres = () => {
-    if (!userData?.genres || userData.genres === "") {
-        return <span className="text-gray-400 italic">No preferences set</span>;
+    if (!userData?.genres || userData.genres.trim() === "") {
+        return (
+        <div className="flex flex-col items-center py-4 w-full">
+            <p className="text-gray-400 italic text-md">Your genre preferences is empty</p>
+            <button 
+                onClick={() => setIsGenreModalOpen(true)} // Make sure this state name matches!
+                className="text-red-500 text-xs font-bold mt-1 hover:underline"
+                >
+                + Add your preferences
+            </button>
+        </div>
+        );
     }
-    
+
     const ids = userData.genres.split(',').map(Number);
     return ids.map(id => {
-      const genre = GENRE_OPTIONS.find(g => g.id === id);
-      return genre ? (
+        const genre = GENRE_OPTIONS.find(g => g.id === id);
+        return genre ? (
         <span key={id} className="px-4 py-1 bg-red-50 text-red-600 rounded-full text-sm font-medium border border-red-100">
-          {genre.emoji} {genre.name}
+            {genre.emoji} {genre.name}
         </span>
-      ) : null;
+        ) : null;
     });
+  };
+
+  const handleGenreUpdate = async (selectedIdsArray) => {
+    const genreString = selectedIdsArray.join(',');
+    const userId = localStorage.getItem('userId');
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/v1/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          ...userData, 
+          genres: genreString 
+        }),
+      });
+
+      if (response.ok) {
+        const updatedUser = await response.json();
+        setUserData(updatedUser);
+        setIsGenreModalOpen(false);
+        localStorage.setItem('userGenres', genreString);
+        setIsGenreModalOpen(false);
+        alert("Genre preferences updated successfully!");
+      }
+      else {
+      alert("Failed to update preferences. Please try again.");
+    }
+    } catch (err) {
+      console.error("Failed to update genres", err);
+      alert("Connection error. Could not save genres.");
+    }
   };
 
   return (
@@ -140,7 +184,6 @@ const Profile = ({ user }) => {
         </div>
       </div>
 
-      {/* --- UPDATE MODAL UI --- */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
@@ -208,7 +251,9 @@ const Profile = ({ user }) => {
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
           <h2 className="text-xl font-medium">Genre Preferences</h2>
-          <FaEdit className="text-gray-400 cursor-pointer hover:text-red-500" />
+          <button onClick={() => setIsGenreModalOpen(true)}>
+            <FaEdit className="text-gray-400 cursor-pointer hover:text-red-500" />
+          </button>
         </div>
         <div className="p-6">
           <div className="flex flex-wrap gap-2">
@@ -216,6 +261,13 @@ const Profile = ({ user }) => {
           </div>
         </div>
       </div>
+
+      <GenreModal 
+        isOpen={isGenreModalOpen}
+        onClose={() => setIsGenreModalOpen(false)}
+        currentGenres={userData?.genres}
+        onSave={handleGenreUpdate}
+      />
 
       {/* SECTION 3: MY FAVOURITES */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
