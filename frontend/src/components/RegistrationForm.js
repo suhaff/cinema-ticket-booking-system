@@ -9,13 +9,40 @@ function RegistrationForm({ onClose }) {
     email: '',
     phone: '',
     password: '',
+    genres:[],
   });
   const formRef = useRef(null);
+
+const GENRE_OPTIONS = [
+  { id: 28, name: 'Action', emoji: '💥' },
+  { id: 12, name: 'Adventure', emoji: '🏞️' },
+  { id: 16, name: 'Animation', emoji: '📽️' },
+  { id: 35, name: 'Comedy', emoji: '😂' },
+  { id: 10751, name: 'Family', emoji: '❤️' },
+  { id: 14, name: 'Fantasy', emoji: '🧙‍♂️' },
+  { id: 9648, name: 'Mystery', emoji: '🔍' },
+  { id: 878, name: 'Sci-Fi', emoji: '🤖' },
+  { id: 18, name: 'Drama', emoji: '🎭' },
+  { id: 27, name: 'Horror', emoji: '👻' },
+  { id: 53, name: 'Thriller', emoji: '😱' },
+  { id: 10402, name: 'Music', emoji: '🎵' },
+  { id: 36, name: 'History', emoji: '📜' },
+  { id: 10752, name: 'War', emoji: '⚔️' },
+  { id: 10749, name: 'Romance', emoji: '💑' },
+  { id: 80, name: 'Crime', emoji: '🔫' }
+];
 
   const handleClickOutside = (event) => {
     if (formRef.current && !formRef.current.contains(event.target)) {
       onClose();
     }
+  };
+
+  const toggleGenre = (genreId) => {
+    const updated = formData.genres.includes(genreId)
+      ? formData.genres.filter(id => id !== genreId)
+      : [...formData.genres, genreId];
+    setFormData({ ...formData, genres: updated });
   };
 
   useEffect(() => {
@@ -45,14 +72,16 @@ function RegistrationForm({ onClose }) {
         email: '',
         phone: '',
         password: '',
+        genres:[],
       });
     }
   };
 
   return (
-    <div className='container mx-auto mt-5' ref={formRef}>
-      <form onSubmit={handleSubmit} className='max-w-sm mx-auto'>
-        <div className='mb-4'>
+    <div className='container mx-auto my-auto p-10' ref={formRef}>
+      <form onSubmit={handleSubmit} className='max-w-md mx-auto'>
+        <h2 className='text-2xl font-bold text-gray-800 mb-6 text-center'>Create Account</h2>
+        <div className='space-y-4'>
           <label
             htmlFor='name'
             className='block text-gray-700 text-sm mb-2'
@@ -115,6 +144,25 @@ function RegistrationForm({ onClose }) {
             className='shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline'
             required
           />
+        </div>
+          <div className='mb-6 text-left'>
+          <label className='block text-gray-700 text-md font-bold mt-6'>
+            Select your favorite genres:
+          </label>
+          <span className='text-gray-400 text-xs mb-4 font-normal'>(Optional)</span>
+          <div className='grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-3 border rounded bg-gray-50'>
+            {GENRE_OPTIONS.map((genre) => (
+              <label key={genre.id} className='flex items-center space-x-2 cursor-pointer hover:bg-white p-1 rounded'>
+                <input
+                  type='checkbox'
+                  checked={formData.genres.includes(genre.id)}
+                  onChange={() => toggleGenre(genre.id)}
+                  className='text-red-500 rounded'
+                />
+                <span className='text-sm font-medium text-gray-600'>{genre.emoji} {genre.name}</span>
+              </label>
+            ))}
+          </div>
         </div>
         <div className='text-center'>
           <button

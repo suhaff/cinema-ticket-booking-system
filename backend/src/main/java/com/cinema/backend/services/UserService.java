@@ -1,10 +1,11 @@
 package com.cinema.backend.services;
 
-import com.cinema.backend.models.User;
-import com.cinema.backend.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import com.cinema.backend.models.User;
+import com.cinema.backend.repositories.UserRepository;
 
 @Service
 public class UserService {
@@ -19,10 +20,15 @@ public class UserService {
     }
 
     public User registerUser(User newUser) {
-        String encodedPassword = passwordEncoder.encode(newUser.getPassword());
+    String currentPassword = newUser.getPassword();
+
+    if (currentPassword != null && !currentPassword.startsWith("$2a$")) {
+        String encodedPassword = passwordEncoder.encode(currentPassword);
         newUser.setPassword(encodedPassword);
-        return userRepository.save(newUser);
     }
+    
+    return userRepository.save(newUser);
+}
 
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email);
@@ -30,5 +36,9 @@ public class UserService {
 
     public boolean isPasswordMatch(String rawPassword, String encodedPassword) {
         return passwordEncoder.matches(rawPassword, encodedPassword);
+    }
+
+    public User getUserById(Long id) {
+        return userRepository.findById(id).orElse(null);
     }
 }

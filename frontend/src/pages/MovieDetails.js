@@ -7,11 +7,12 @@ import formatDate from '../utils/formatDate';
 import formatRuntime from '../utils/formatRuntime';
 import getMovieTypes from '../utils/getMovieTypes';
 
-const MovieDetails = () => {
+const MovieDetails = ({user, setUser}) => {
   const { id } = useParams();
   const [movie, setMovie] = useState(null);
   const [selectedSession, setSelectedSession] = useState(null);
   const [movieSessions, setMovieSessions] = useState([]);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   const API_KEY = process.env.REACT_APP_API_KEY || '';
 
@@ -37,6 +38,60 @@ const MovieDetails = () => {
       }
     }
   }, [movie]);
+
+  useEffect(() => {
+  if (user && user.favorites) {
+    const favoritesArray = user.favorites.split(',');
+    setIsFavorite(favoritesArray.includes(id.toString()));
+  } else {
+    setIsFavorite(false);
+  }
+  }, [id, user]);
+
+ const toggleFavorite = async () => {
+  const latestUser = JSON.parse(localStorage.getItem('user'));
+  const currentFavs = latestUser?.favorites || "";
+  
+  let favArray = currentFavs ? currentFavs.split(',') : [];
+  
+  const movieIdStr = id.toString(); 
+  const isAlreadyFav = favArray.includes(movieIdStr);
+
+  if (isAlreadyFav) {
+    favArray = favArray.filter(favId => favId !== movieIdStr);
+  } else {
+    if (!favArray.includes(movieIdStr)) {
+      favArray.push(movieIdStr);
+    }
+  }
+
+  const newFavString = favArray.join(',');
+
+  try {
+    const response = await fetch(`http://localhost:8080/api/v1/users/${user.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        ...latestUser, 
+        favorites: newFavString 
+      }),
+    });
+
+    if (response.ok) {
+      const updatedUser = await response.json();
+      
+      // 3. Sync everything back
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      localStorage.setItem('userFavorites', updatedUser.favorites);
+      setIsFavorite(!isAlreadyFav);
+      
+      alert(isAlreadyFav ? "Removed!" : "Added! ❤️");
+    }
+  } catch (err) {
+    console.error("Error:", err);
+  }
+};
 
   const handleSessionSelect = (session) => {
     console.log('Selected session:', session);
@@ -135,7 +190,16 @@ const MovieDetails = () => {
               >
                 Visit Homepage
               </a>
+              <button 
+              onClick={toggleFavorite}
+              className={`flex items-center mt-4 space-x-2 px-6 py-2 rounded-lg font-bold transition ${
+                isFavorite ? 'bg-red-400 text-white' : 'bg-gray-200 text-gray-700 hover:bg-red-100'
+              }`}
+            >
+              {isFavorite ? '❤️ Favorited' : '🤍 Add to Favorites'}
+            </button>
             </div>
+            
           </div>
         </div>
       </div>
@@ -164,7 +228,7 @@ const MovieDetails = () => {
         </div>
       </div>
 
-      {selectedSession && <SeatPlan movie={movie} selectedSession={selectedSession} />}
+      {selectedSession && <SeatPlan movie={movie} selectedSession={selectedSession} user={user} />}
     </div>
   );
 };
