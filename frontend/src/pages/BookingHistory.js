@@ -18,14 +18,15 @@ const BookingHistory = () => {
                 setLoading(true);
                 const storedUser = JSON.parse(localStorage.getItem('user'));
                 
-                if (!storedUser || !storedUser.userId) {
+                const actualId = storedUser?.userId || storedUser?.id || localStorage.getItem('userId');
+            
+                if (!actualId) {
                     setError("Please log in to view your booking history");
                     setLoading(false);
                     return;
                 }
 
-                const userId = storedUser.userId;
-                const result = await GetBookingHistory(userId);
+                const result = await GetBookingHistory(actualId);
 
                 if (result.success) {
                     setBookings(result.bookings);

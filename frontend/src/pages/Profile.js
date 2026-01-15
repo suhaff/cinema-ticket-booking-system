@@ -371,8 +371,8 @@ const Profile = ({ user, setUser }) => {
           <h2 className="text-xl font-medium">Booking History</h2>
           <FaTicketAlt className="text-gray-400" />
         </div>
-        <div className="p-4">
-          <BookingHistory user={user} />
+        <div className="p-4 overflow-x-auto"> 
+          <BookingHistory />
         </div>
       </div>
     </div>

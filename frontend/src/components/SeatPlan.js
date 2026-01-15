@@ -19,7 +19,7 @@ const movies = [
   },
 ];
 
-function SeatPlan({ movie, selectedSession }) {
+function SeatPlan({ movie, selectedSession, user }) {
   const BASE_URL = process.env.REACT_APP_BASE_URL;
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [successPopupVisible, setSuccessPopupVisible] = useState(false);
@@ -177,6 +177,13 @@ function SeatPlan({ movie, selectedSession }) {
     const isAnySeatSelected = selectedSeats.length > 0;
 
     if (isAnySeatSelected) {
+      const authenticatedId = user?.id || user?.userId || localStorage.getItem('userId');
+      if (!authenticatedId) {
+          alert("Please log in to complete your booking.");
+          navigate('/login');
+          return;
+      }
+
       const orderSeats = selectedSeats;
       const updatedOccupiedSeats = [...orderSeats, ...occupiedSeats];
       const movieTypes = getMovieTypes(movie.id);
@@ -189,8 +196,8 @@ function SeatPlan({ movie, selectedSession }) {
         .join(', ') || movie.original_language || 'N/A';
 
       const order = {
-        customerId: userId || Math.floor(Math.random() * 1000000),
-        userName: userName || '',
+        customerId: authenticatedId,
+        userName: appliedPromo ? `${user?.name} PROMO:${appliedPromo?.code}` : user?.name,
         orderDate: new Date().toISOString(),
         seats: [...orderSeats, ...occupiedSeats],
         seat: orderSeats,

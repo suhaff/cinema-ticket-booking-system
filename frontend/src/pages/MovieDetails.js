@@ -228,7 +228,7 @@ const MovieDetails = ({user, setUser}) => {
         </div>
       </div>
 
-      {selectedSession && <SeatPlan movie={movie} selectedSession={selectedSession} />}
+      {selectedSession && <SeatPlan movie={movie} selectedSession={selectedSession} user={user} />}
     </div>
   );
 };
