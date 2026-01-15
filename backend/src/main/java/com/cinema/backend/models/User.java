@@ -24,6 +24,9 @@ public class User {
     private String password;
     private String genres;
 
+    @Column(columnDefinition = "TEXT") 
+    private String favorites;
+
     @Transient
     private String loginEmail;
 
@@ -33,13 +36,14 @@ public class User {
     public User() {
     }
 
-    public User(Long id, String name, String surname, String email, String password, String genres) {
+    public User(Long id, String name, String surname, String email, String password, String genres, String favorites) {
         this.id = id;
         this.name = name;
         this.surname = surname;
         this.email = email;
         this.password = password;
         this.genres = genres;
+        this.favorites = favorites;
     }
 
     public User(String username, String encodedPassword) {
@@ -107,12 +111,21 @@ public class User {
 
     public void setGenres(Object genres) {
     if (genres instanceof java.util.List) {
-        // converts the React array [28, 35] into the string "28,35"
         this.genres = ((java.util.List<?>) genres).stream()
                 .map(Object::toString)
                 .collect(java.util.stream.Collectors.joining(","));
     } else {
         this.genres = (String) genres;
+    }
+    }
+
+    public String getFavorites() {
+    return favorites;
+    }
+
+    public void setFavorites(String favorites) {
+    if (favorites != null) {
+        this.favorites = favorites;
     }
 }
 
@@ -125,6 +138,7 @@ public class User {
                 ", email='" + email + '\'' +
                 ", password='" + password + '\'' +
                 ", genres='" + genres + '\'' +
+                ", favorites='" + favorites + '\'' +
                 '}';
     }
 
@@ -133,12 +147,12 @@ public class User {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         User user = (User) o;
-        return Objects.equals(id, user.id) && Objects.equals(name, user.name) && Objects.equals(surname, user.surname) && Objects.equals(email, user.email) && Objects.equals(password, user.password) && Objects.equals(genres, user.genres);
+        return Objects.equals(id, user.id) && Objects.equals(name, user.name) && Objects.equals(surname, user.surname) && Objects.equals(email, user.email) && Objects.equals(password, user.password) && Objects.equals(genres, user.genres) && Objects.equals(favorites, user.favorites);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, surname, email, password, genres);
+        return Objects.hash(id, name, surname, email, password, genres, favorites);
     }
 
 

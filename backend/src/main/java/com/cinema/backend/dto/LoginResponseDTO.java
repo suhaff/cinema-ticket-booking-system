@@ -6,12 +6,14 @@ public class LoginResponseDTO {
     private String userName;
     private Long userId;
     private String genres;
+    private String favorites;
 
-    public LoginResponseDTO(String message, String userName, Long userId, String genres) {
+    public LoginResponseDTO(String message, String userName, Long userId, String genres, String favorites) {
         this.message = message;
         this.userName = userName;
         this.userId = userId;
         this.genres = genres;
+        this.favorites = favorites;
     }
 
     public String getMessage() {
@@ -44,5 +46,13 @@ public class LoginResponseDTO {
 
     public void setGenres(String genres) {
         this.genres = genres;
+    }
+
+    public String getFavorites() {
+        return favorites;
+    }
+
+    public void setFavorites(String favorites) {
+        this.favorites = favorites;
     }
 }

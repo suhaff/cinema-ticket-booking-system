@@ -1,8 +1,12 @@
 function login(userData) {
+  const idToSave = userData.id || userData.userId; 
+  const nameToSave = userData.name || userData.userName;
+
   localStorage.setItem('user', JSON.stringify(userData));
-  localStorage.setItem('userId', userData.userId);
-  localStorage.setItem('userName', userData.userName);
-  localStorage.setItem('userGenres', userData.genres);
+  localStorage.setItem('userId', idToSave); 
+  localStorage.setItem('userName', nameToSave);
+  localStorage.setItem('userGenres', userData.genres || "");
+  localStorage.setItem('userFavorites', userData.favorites || "");
 }
 
 function logout() {
@@ -11,6 +15,7 @@ function logout() {
   localStorage.removeItem('userId');    
   localStorage.removeItem('userName');
   localStorage.removeItem('userGenres');
+  localStorage.removeItem('userFavorites');
 
   window.location.href = '/';
 }

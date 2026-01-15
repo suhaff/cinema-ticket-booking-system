@@ -2,31 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { FaEdit, FaUser, FaLock, FaTicketAlt, FaFilm, FaTimes } from 'react-icons/fa';
 import BookingHistory from './BookingHistory'; 
 import GenreModal from '../components/EditGenreModal';
+import RemoveFavoriteModal from '../components/RemoveFavourtieModal';
+import FetchMovieDetails from '../API/GetMovieDetails';
+import { GENRE_OPTIONS } from '../utils/GenreOption';
 
-const GENRE_OPTIONS = [
-  { id: 28, name: 'Action', emoji: '💥' },
-  { id: 12, name: 'Adventure', emoji: '🏞️' },
-  { id: 16, name: 'Animation', emoji: '📽️' },
-  { id: 35, name: 'Comedy', emoji: '😂' },
-  { id: 10751, name: 'Family', emoji: '❤️' },
-  { id: 14, name: 'Fantasy', emoji: '🧙‍♂️' },
-  { id: 9648, name: 'Mystery', emoji: '🔍' },
-  { id: 878, name: 'Sci-Fi', emoji: '🤖' },
-  { id: 18, name: 'Drama', emoji: '🎭' },
-  { id: 27, name: 'Horror', emoji: '👻' },
-  { id: 53, name: 'Thriller', emoji: '😱' },
-  { id: 10402, name: 'Music', emoji: '🎵' },
-  { id: 36, name: 'History', emoji: '📜' },
-  { id: 10752, name: 'War', emoji: '⚔️' },
-  { id: 10749, name: 'Romance', emoji: '💑' },
-  { id: 80, name: 'Crime', emoji: '🔫' }
-];
-
-const Profile = ({ user }) => {
+const Profile = ({ user, setUser }) => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isGenreModalOpen, setIsGenreModalOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [favoriteMovies, setFavoriteMovies] = useState([]);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [movieToDelete, setMovieToDelete] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     surname: '',
@@ -34,6 +21,8 @@ const Profile = ({ user }) => {
     password: '' ,
   });
   const [modalError, setModalError] = useState('');
+  const [loadingFavs, setLoadingFavs] = useState(false);
+  const API_KEY = process.env.REACT_APP_API_KEY || '';
 
   useEffect(() => {
     const userId = localStorage.getItem('userId');
@@ -42,7 +31,7 @@ const Profile = ({ user }) => {
     setUserData(null);
     setLoading(false);
     return;
-  }
+    }
     
     const fetchProfile = async () => {
       try {
@@ -50,25 +39,81 @@ const Profile = ({ user }) => {
         const data = await response.json();
         console.log("Fetched Profile Data:", data);
         setUserData(data);
-        // Sync the edit form with the new data
         setFormData({
-            name: data.name,
-            surname: data.surname,
-            email: data.email,
-            password: ''
+          name: data.name,
+          surname: data.surname,
+          email: data.email,
+          password: ''
         });
       } catch (error) {
-        console.error("Error fetching profile:", error);
+          console.error("Error fetching profile:", error);
       } finally {
-        setLoading(false);
+          setLoading(false);
+      }
+  };
+
+  fetchProfile();
+  }, [user]);
+
+  useEffect(() => {
+    const loadFavoriteMovies = async () => {
+      if (user && user.favorites && user.favorites.trim() !== "") {
+        setLoadingFavs(true);
+        const ids = user.favorites.split(',').filter(id => id.trim() !== "");
+        
+        try {
+          const movieDataPromises = ids.map(id => FetchMovieDetails(id, API_KEY));
+          const results = await Promise.all(movieDataPromises);
+          
+          setFavoriteMovies(results.filter(m => m !== null));
+        } catch (error) {
+          console.error("Error loading favorite movies:", error);
+        } finally {
+          setLoadingFavs(false);
+        }
+      } else {
+        setFavoriteMovies([]);
       }
     };
 
-    fetchProfile();
-  }, [user]);
+    loadFavoriteMovies();
+  }, [user?.favorites, API_KEY]);
 
-  if (loading) return <div className="text-center mt-10 text-gray-500">Loading your profile...</div>;
-  if (!userData) return <div className="text-center mt-10">Please log in to view settings.</div>;
+  const triggerDeleteModal = (movie) => {
+    setMovieToDelete(movie);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!movieToDelete) return;
+
+    const currentFavs = user.favorites || "";
+    const updatedFavs = currentFavs
+        .split(',')
+        .filter(id => id !== movieToDelete.id.toString())
+        .join(',');
+
+    try {
+        const response = await fetch(`http://localhost:8080/api/v1/users/${user.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                ...user, 
+                favorites: updatedFavs 
+            }),
+        });
+
+        if (response.ok) {
+            const updatedUser = await response.json();
+            setUser(updatedUser);
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            setShowDeleteModal(false);
+            setMovieToDelete(null);
+        }
+    } catch (err) {
+        console.error("Failed to remove favorite:", err);
+    }
+  };
 
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
@@ -91,6 +136,7 @@ const Profile = ({ user }) => {
         const data = await response.json();
         setUserData(data);
         setIsModalOpen(false);
+        setFormData({ ...formData, password: '' });
         alert("Update successful!");
         } else {
         const msg = await response.text();
@@ -159,6 +205,9 @@ const Profile = ({ user }) => {
       alert("Connection error. Could not save genres.");
     }
   };
+
+  if (loading) return <div className="text-center mt-10 text-gray-500">Loading your profile...</div>;
+  if (!userData) return <div className="text-center mt-10">Please log in to view settings.</div>;
 
   return (
     <div className="max-w-4xl mx-auto mt-10 p-4 space-y-6 relative">
@@ -272,13 +321,49 @@ const Profile = ({ user }) => {
       {/* SECTION 3: MY FAVOURITES */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-          <h2 className="text-xl font-medium">My Favourites</h2>
+          <h2 className="text-xl font-medium">My Favourites ({favoriteMovies.length})</h2>
           <FaFilm className="text-gray-400" />
         </div>
-        <div className="p-10 text-center text-gray-400 italic">
-          No favorite movies added yet.
+
+        <div className="p-6">
+          {loadingFavs ? (
+            <div className="text-center py-10 text-gray-400">Loading favorites...</div>
+          ) : favoriteMovies.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
+              {favoriteMovies.map((movie) => (
+                <div key={movie.id} className="relative group">
+                  <a href={`/movie/${movie.id}`} className="block">
+                    <div className="overflow-hidden rounded-lg shadow-md transition-shadow duration-300">
+                      <img
+                        src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+                        alt={movie.title}
+                        className="w-full h-auto transform group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                    <h3 className="mt-2 text-sm font-semibold text-gray-800 truncate">{movie.title}</h3>
+                  </a>
+                  
+                  <button 
+                    onClick={() => triggerDeleteModal(movie)}
+                    className="absolute top-2 right-2 bg-black bg-opacity-60 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                  >
+                    <FaTimes size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-10 text-center text-gray-400 italic text-sm">No favorite movies added yet.</div>
+          )}
         </div>
       </div>
+      <RemoveFavoriteModal 
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleConfirmDelete}
+        movieName={movieToDelete?.title}
+        posterPath={movieToDelete?.poster_path}
+      />
 
       {/* SECTION 4: BOOKING HISTORY (UC-2) */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">

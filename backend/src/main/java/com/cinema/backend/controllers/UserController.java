@@ -28,20 +28,26 @@ public class UserController {
 
     @PostMapping("/api/v1/login")
     public ResponseEntity<LoginResponseDTO> loginUser(@RequestBody User loginRequest) {
+        System.out.println("Email from Frontend: [" + loginRequest.getEmail() + "]");
         User user = userService.getUserByEmail(loginRequest.getEmail());
 
         if (user == null) {
+            System.out.println("Result: User NOT found in database.");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new LoginResponseDTO("Invalid credentials", null, null, null));
+                    .body(new LoginResponseDTO("Invalid credentials", null, null, null, null));
         }
+        boolean isMatch = userService.isPasswordMatch(loginRequest.getPassword(), user.getPassword());
 
-        if (userService.isPasswordMatch(loginRequest.getPassword(), user.getPassword())) {
+        System.out.println("Password from Frontend: [" + loginRequest.getPassword() + "]");
+        System.out.println("Password from Database: [" + user.getPassword() + "]");
+        System.out.println("Match Result: " + isMatch);
+        if (isMatch) {
             System.out.println("User Logged In. Saved Genres: " + user.getGenres());
-            LoginResponseDTO response = new LoginResponseDTO("Login successful", user.getName(), user.getId(), user.getGenres());
+            LoginResponseDTO response = new LoginResponseDTO("Login successful", user.getName(), user.getId(), user.getGenres(), user.getFavorites());
             return ResponseEntity.ok().body(response);
         } else {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new LoginResponseDTO("Invalid credentials", null, null, null));
+                    .body(new LoginResponseDTO("Invalid credentials", null, null, null, null));
         }
     }
 
@@ -61,24 +67,41 @@ public class UserController {
         if (user == null) {
             return ResponseEntity.notFound().build();
         }
-
         // Update fields
+        if (userDetails.getName() != null) {
         user.setName(userDetails.getName());
-        user.setSurname(userDetails.getSurname());
-        user.setGenres(userDetails.getGenres());
+        }
+        if (userDetails.getSurname() != null) {
+            user.setSurname(userDetails.getSurname());
+        }
+        if (userDetails.getEmail() != null) {
+            user.setEmail(userDetails.getEmail());
+        }
+        if (userDetails.getGenres() != null) {
+            user.setGenres(userDetails.getGenres());
+        }
+        if (userDetails.getFavorites() != null) {
+            user.setFavorites(userDetails.getFavorites());
+        }
 
         // Password Update & Validation
         String newPassword = userDetails.getPassword();
-        if (newPassword != null && !newPassword.isEmpty()) {
-            // Validation check
+        if (newPassword != null && !newPassword.trim().isEmpty()) {
+        
+        // CHECK: If it starts with $2a$, it's already a hash from the database.
+        // We do NOT want to update the password in this case.
+        if (newPassword.startsWith("$2a$")) {
+            System.out.println("Password is already hashed. Skipping re-hash.");
+        } else {
+            // It's a new plain-text password from the user
             if (newPassword.length() < 8) {
                 return ResponseEntity.badRequest().body("Password must be at least 8 characters long.");
             }
             user.setPassword(newPassword); 
+            System.out.println("New plain-text password set. Will be hashed by Service.");
         }
-
+        }
         User updatedUser = userService.registerUser(user);
-        // Returning a User object here
         return ResponseEntity.ok(updatedUser);
     }
 }
