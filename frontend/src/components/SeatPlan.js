@@ -97,24 +97,13 @@ function SeatPlan({ movie, selectedSession, user }) {
 
   const occupiedSeats =
     seatPlan && seatPlan.length > 0 ? seatPlan : movies[0].occupied;
+  const isSoldOut = occupiedSeats.length >= 64;
 
   const availableSeats = [27, 28, 29, 30, 35, 36, 37, 38, 43, 44, 45, 46];
 
   const filteredAvailableSeats = availableSeats.filter(
     (seat) => !occupiedSeats.includes(seat),
   );
-
-  // useEffect(() => {
-  //   let recommended = null;
-  //   for (let i = 0; i < filteredAvailableSeats.length; i++) {
-  //     const seat = filteredAvailableSeats[i];
-  //     if (!occupiedSeats.includes(seat)) {
-  //       recommended = seat;
-  //       break;
-  //     }
-  //   }
-  //   setRecommendedSeat(recommended);
-  // }, [filteredAvailableSeats, occupiedSeats]);
 
   let selectedSeatText = '';
   if (selectedSeats.length > 0) {
@@ -333,39 +322,52 @@ function SeatPlan({ movie, selectedSession, user }) {
     <div className='flex flex-col items-center'>
       <div className='w-full md:w-1/2 lg:w-2/3 px-6'>
         <h2 className='mb-8 text-2xl font-semibold text-center'>
-          Choose your seats by clicking on the available seats
+          {isSoldOut ? "Session Sold Out" : "Choose your seats"}
         </h2>
       </div>
 
-      <div className='CinemaPlan'>
+      {isSoldOut ? (
+        // Sold Out Message
+        <div className='text-center p-10 bg-red-50 rounded-lg border border-red-200'>
+          <p className='text-red-600 font-bold text-lg mb-4'>
+            No seats available for this session.
+          </p>
+          <div className='flex flex-col gap-3'>
+            <button
+              onClick={() => navigate(-1)}
+              className='bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-semibold'
+            >
+              Return to Movie List
+            </button>
+            <p className='text-sm text-gray-500'>Or try selecting a different time</p>
+          </div>
+        </div>
+      ) : (
+        <div className='CinemaPlan'>
+          <SeatSelector
+            movie={{ ...movies[0], occupied: occupiedSeats }}
+            selectedSeats={selectedSeats}
+            recommendedSeat={recommendedSeat}
+            numSeats={numSeats}
+            setNumSeats={setNumSeats}
+            handleRecommendSeats={handleRecommendSeats}
+            onSelectedSeatsChange={(seats) => setSelectedSeats(seats)}
+            onRecommendedSeatChange={(seat) => setRecommendedSeat(seat)}
+          />
+          
+          <SeatShowcase />
 
-        <SeatSelector
-          movie={{ ...movies[0], occupied: occupiedSeats }}
-          selectedSeats={selectedSeats}
-          recommendedSeat={recommendedSeat}
-          numSeats={numSeats}             
-          setNumSeats={setNumSeats}       
-          handleRecommendSeats={handleRecommendSeats} 
-          onSelectedSeatsChange={(selectedSeats) => setSelectedSeats(selectedSeats)}
-          onRecommendedSeatChange={(recommendedSeat) => setRecommendedSeat(recommendedSeat)}
-        />
-        <SeatShowcase />
+          <p className='info mb-2 text-sm md:text-sm lg:text-base'>
+            You have selected{' '}
+            <span className='count font-semibold'>{selectedSeats.length}</span>{' '}
+            seat{selectedSeats.length !== 1 ? 's' : ''}
+            {selectedSeats.length > 0 && ':'}{' '}
+            <span className='selected-seats font-semibold'>{selectedSeatText}</span>
+          </p>
 
-        <p className='info mb-2 text-sm md:text-sm lg:text-base'>
-          You have selected{' '}
-          <span className='count font-semibold'>{selectedSeats.length}</span>{' '}
-          seat{selectedSeats.length !== 1 ? 's' : ''}
-          {selectedSeats.length === 0 ? '' : ':'}{' '}
-          {selectedSeatText ? (
-            <span className='selected-seats font-semibold'>
-              {' '}
-              {selectedSeatText}
-            </span>
-          ) : (
-            <span></span>
-          )}{' '}
+          {/* Pricing Summary */}
           {selectedSeats.length > 0 && (
-            <div className='mt-4 text-sm'>
+            <div className='mt-4 text-sm w-full max-w-md'>
               <div className='flex justify-between mb-1'>
                 <span>Subtotal ({seatCount} × €{basePrice.toFixed(2)}):</span>
                 <span>€{subtotal.toFixed(2)}</span>
@@ -380,7 +382,7 @@ function SeatPlan({ movie, selectedSession, user }) {
               </div>
               {discount > 0 && (
                 <div className='flex justify-between mb-1 text-green-600'>
-                  <span>Discount ({appliedPromo.code}):</span>
+                  <span>Discount ({appliedPromo?.code}):</span>
                   <span>-€{discount.toFixed(2)}</span>
                 </div>
               )}
@@ -390,78 +392,59 @@ function SeatPlan({ movie, selectedSession, user }) {
               </div>
             </div>
           )}
-        </p>
 
-        {/* Promo Code Section */}
-        {isAnySeatSelected && (
-          <div className='my-4 w-full max-w-md'>
-            <div className='flex gap-2'>
-              <input
-                type='text'
-                placeholder='Enter promo code'
-                value={promoCode}
-                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                disabled={appliedPromo !== null}
-                className='flex-1 px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
-              />
-              {appliedPromo ? (
-                <button
-                  onClick={handleRemovePromoCode}
-                  className='bg-red-500 hover:bg-red-700 text-white rounded px-4 py-2 text-sm font-semibold'
-                >
-                  Remove
-                </button>
-              ) : (
-                <button
-                  onClick={handleApplyPromoCode}
-                  className='bg-blue-500 hover:bg-blue-700 text-white rounded px-4 py-2 text-sm font-semibold'
-                >
-                  Apply
-                </button>
+          {/* Promo Code Section */}
+          {isAnySeatSelected && (
+            <div className='my-4 w-full max-w-md'>
+              <div className='flex gap-2'>
+                <input
+                  type='text'
+                  placeholder='Enter promo code'
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  disabled={appliedPromo !== null}
+                  className='flex-1 px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+                />
+                {appliedPromo ? (
+                  <button onClick={handleRemovePromoCode} className='bg-red-500 text-white rounded px-4 py-2 text-sm font-semibold'>
+                    Remove
+                  </button>
+                ) : (
+                  <button onClick={handleApplyPromoCode} className='bg-blue-500 text-white rounded px-4 py-2 text-sm font-semibold'>
+                    Apply
+                  </button>
+                )}
+              </div>
+              {promoMessage && (
+                <p className={`mt-2 text-sm ${promoError ? 'text-red-500' : 'text-green-600'}`}>
+                  {promoMessage}
+                </p>
               )}
             </div>
-            {promoMessage && (
-              <p className={`mt-2 text-sm ${promoError ? 'text-red-500' : 'text-green-600'}`}>
-                {promoMessage}
-              </p>
-            )}
-          </div>
-        )}
+          )}
 
-        {isAnySeatSelected ? (
-          <div className="flex flex-col md:flex-row items-center gap-4 mt-4">
-            {/* Reset Button */}
-            <button
-              className='bg-yellow-500 hover:bg-yellow-600 text-white rounded px-3 py-2 text-sm font-semibold cursor-pointer'
-              onClick={() => {
-                setSelectedSeats([]);
-                setRecommendedSeat(null);
-              }}
-            >
-              Reset Selection
-            </button>
+          {/* Buy Button */}
+          {isAnySeatSelected ? (
+            <div className="flex flex-col md:flex-row items-center gap-4 mt-4">
+              <button
+                className='bg-green-500 hover:bg-green-700 text-white rounded px-3 py-2 text-sm font-semibold cursor-pointer'
+                onClick={handleButtonClick}
+              >
+                Buy at <span className='total font-semibold'>€{totalPrice.toFixed(2)}</span>
+              </button>
+            </div>
+          ) : (
+            <p className='info text-sm text-gray-500'>Please select a seat</p>
+          )}
+        </div>
+      )} 
 
-            <button
-              className='bg-green-500 hover:bg-green-700 text-white rounded px-3 py-2 text-sm font-semibold cursor-pointer'
-              onClick={handleButtonClick}
-            >
-              Buy at <span className='total font-semibold'>€{totalPrice.toFixed(2)}</span>
-            </button>
-          </div>
-        ) : (
-          <div>
-            <p className='info text-sm md:text-sm lg:text-base'>
-              Please select a seat
-            </p>
-          </div>
-        )}
-
-        {successPopupVisible && (
-          <div className='bg-green-500 text-white px-4 py-2 text-sm md:text-sm lg:text-base rounded absolute bottom-1/2 mb-8 mr-8 flex justify-center'>
-            Order Successful
-          </div>
-        )}
-      </div>
+      {/* Success Popup */}
+      {successPopupVisible && (
+        <div className='bg-green-500 text-white px-4 py-2 rounded fixed bottom-10 flex justify-center'>
+          Order Successful
+        </div>
+      )}
 
       {/* Payment Modal */}
       <PaymentModal
