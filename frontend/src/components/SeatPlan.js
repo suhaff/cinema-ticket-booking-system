@@ -11,6 +11,7 @@ import SeatShowcase from './SeatShowcase';
 import PaymentModal from './PaymentModal';
 import ValidatePromoCode from '../API/ValidatePromoCode';
 
+const seats = Array.from({ length: 8 * 8 }, (_, i) => i);
 const movies = [
   {
     title: '',
@@ -30,7 +31,7 @@ function SeatPlan({ movie, selectedSession, user }) {
   const [userId, setUserId] = useState('');
 
   const [seatPlan, setSeatPlan] = useState(null);
-  
+
   // Payment modal state
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [pendingOrder, setPendingOrder] = useState(null);
@@ -63,7 +64,7 @@ function SeatPlan({ movie, selectedSession, user }) {
 
     // Listen for storage changes from other components
     window.addEventListener('storage', handleStorageChange);
-    
+
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
@@ -103,17 +104,17 @@ function SeatPlan({ movie, selectedSession, user }) {
     (seat) => !occupiedSeats.includes(seat),
   );
 
-  useEffect(() => {
-    let recommended = null;
-    for (let i = 0; i < filteredAvailableSeats.length; i++) {
-      const seat = filteredAvailableSeats[i];
-      if (!occupiedSeats.includes(seat)) {
-        recommended = seat;
-        break;
-      }
-    }
-    setRecommendedSeat(recommended);
-  }, [filteredAvailableSeats, occupiedSeats]);
+  // useEffect(() => {
+  //   let recommended = null;
+  //   for (let i = 0; i < filteredAvailableSeats.length; i++) {
+  //     const seat = filteredAvailableSeats[i];
+  //     if (!occupiedSeats.includes(seat)) {
+  //       recommended = seat;
+  //       break;
+  //     }
+  //   }
+  //   setRecommendedSeat(recommended);
+  // }, [filteredAvailableSeats, occupiedSeats]);
 
   let selectedSeatText = '';
   if (selectedSeats.length > 0) {
@@ -125,7 +126,7 @@ function SeatPlan({ movie, selectedSession, user }) {
   const seatCount = selectedSeats.length;
   const subtotal = basePrice * seatCount;
   const bookingFee = subtotal * 0.10; // 10% booking fee
-  
+
   // Apply discount if promo code is valid
   let discount = 0;
   if (appliedPromo) {
@@ -135,11 +136,11 @@ function SeatPlan({ movie, selectedSession, user }) {
       discount = appliedPromo.discountValue;
     }
   }
-  
+
   // Calculate tax on (subtotal + booking fee - discount) to match backend
   const taxableAmount = subtotal + bookingFee - discount;
   const tax = taxableAmount * 0.10; // 10% tax
-  
+
   const totalPrice = subtotal + bookingFee + tax - discount;
 
   const isAnySeatSelected = selectedSeats.length > 0;
@@ -153,7 +154,7 @@ function SeatPlan({ movie, selectedSession, user }) {
     }
 
     const result = await ValidatePromoCode(promoCode.trim().toUpperCase());
-    
+
     if (result.success) {
       setAppliedPromo(result.data);
       setPromoMessage(`Promo code applied! ${result.data.discountType === 'PERCENTAGE' ? result.data.discountValue + '% off' : '€' + result.data.discountValue + ' off'}`);
@@ -179,9 +180,9 @@ function SeatPlan({ movie, selectedSession, user }) {
     if (isAnySeatSelected) {
       const authenticatedId = user?.id || user?.userId || localStorage.getItem('userId');
       if (!authenticatedId) {
-          alert("Please log in to complete your booking.");
-          navigate('/login');
-          return;
+        alert("Please log in to complete your booking.");
+        navigate('/login');
+        return;
       }
 
       const orderSeats = selectedSeats;
@@ -234,7 +235,7 @@ function SeatPlan({ movie, selectedSession, user }) {
       // Backend handles seat reservation, so we don't need to call updateSeatsInHall
       // The order creation endpoint will reserve seats automatically
       const orderResponse = await BuyTickets(BASE_URL, myOrder);
-      
+
       if (orderResponse && orderResponse.orderId) {
         // Order created successfully with PENDING status
         // Show payment modal for user to choose payment method
@@ -252,15 +253,15 @@ function SeatPlan({ movie, selectedSession, user }) {
     if (!pendingOrder) return;
 
     const orderId = pendingOrder.orderId;
-    
+
     // Process payment with selected method
     const paymentResponse = await MakePayment(BASE_URL, orderId, paymentDetails);
-    
+
     if (paymentResponse && paymentResponse.success) {
       // Payment successful - booking confirmed
       console.log('Payment successful:', paymentResponse);
       setShowPaymentModal(false);
-      
+
       // Navigate to confirmation page instead of showing popup
       navigate(`/booking-confirmation/${orderId}`);
     } else {
@@ -268,6 +269,63 @@ function SeatPlan({ movie, selectedSession, user }) {
       console.error('Payment failed:', paymentResponse);
       setShowPaymentModal(false);
       alert('Payment failed: ' + (paymentResponse?.message || 'Unknown error. Please try again.'));
+    }
+  };
+
+  const [numSeats, setNumSeats] = useState(1);
+  const handleRecommendSeats = () => {
+    if (!numSeats || numSeats < 1) return;
+
+    const rows = 8;
+    const cols = 8;
+
+    // 1. Define row preference (Middle rows first: 4, 3, 5, 2, 6, 1, 7, 0)
+    const rowOrder = [4, 3, 5, 2, 6, 1, 7, 0];
+
+    // 2. Define column preference (Center columns first)
+    // We calculate "closeness to center" for each starting position in a row
+    const getCenterOffset = (startIndex) => {
+      const selectionCenter = startIndex + (numSeats - 1) / 2;
+      const theaterCenter = (cols - 1) / 2;
+      return Math.abs(selectionCenter - theaterCenter);
+    };
+
+    let bestRecommended = null;
+
+    // Search through rows in order of preference
+    for (let row of rowOrder) {
+      const rowStart = row * cols;
+      const rowEnd = rowStart + cols;
+      const allRowSeats = seats.slice(rowStart, rowEnd);
+
+      let possibleSelectionsInRow = [];
+
+      // Find all possible consecutive blocks in this row
+      for (let i = 0; i <= cols - numSeats; i++) {
+        const slice = allRowSeats.slice(i, i + numSeats);
+        const isAllAvailable = slice.every(seat => !occupiedSeats.includes(seat));
+
+        if (isAllAvailable) {
+          possibleSelectionsInRow.push({
+            seats: slice,
+            offset: getCenterOffset(i)
+          });
+        }
+      }
+
+      // If we found options in this row, pick the one closest to the center
+      if (possibleSelectionsInRow.length > 0) {
+        possibleSelectionsInRow.sort((a, b) => a.offset - b.offset);
+        bestRecommended = possibleSelectionsInRow[0].seats;
+        break; // Exit row loop once the best spot in the best available row is found
+      }
+    }
+
+    if (bestRecommended) {
+      setRecommendedSeat(bestRecommended);
+    } else {
+      alert(`No ${numSeats} consecutive seats available in a single row!`);
+      setRecommendedSeat(null);
     }
   };
 
@@ -280,16 +338,16 @@ function SeatPlan({ movie, selectedSession, user }) {
       </div>
 
       <div className='CinemaPlan'>
+
         <SeatSelector
           movie={{ ...movies[0], occupied: occupiedSeats }}
           selectedSeats={selectedSeats}
           recommendedSeat={recommendedSeat}
-          onSelectedSeatsChange={(selectedSeats) =>
-            setSelectedSeats(selectedSeats)
-          }
-          onRecommendedSeatChange={(recommendedSeat) =>
-            setRecommendedSeat(recommendedSeat)
-          }
+          numSeats={numSeats}             
+          setNumSeats={setNumSeats}       
+          handleRecommendSeats={handleRecommendSeats} 
+          onSelectedSeatsChange={(selectedSeats) => setSelectedSeats(selectedSeats)}
+          onRecommendedSeatChange={(recommendedSeat) => setRecommendedSeat(recommendedSeat)}
         />
         <SeatShowcase />
 
@@ -371,7 +429,18 @@ function SeatPlan({ movie, selectedSession, user }) {
         )}
 
         {isAnySeatSelected ? (
-          <div>
+          <div className="flex flex-col md:flex-row items-center gap-4 mt-4">
+            {/* Reset Button */}
+            <button
+              className='bg-yellow-500 hover:bg-yellow-600 text-white rounded px-3 py-2 text-sm font-semibold cursor-pointer'
+              onClick={() => {
+                setSelectedSeats([]);
+                setRecommendedSeat(null);
+              }}
+            >
+              Reset Selection
+            </button>
+
             <button
               className='bg-green-500 hover:bg-green-700 text-white rounded px-3 py-2 text-sm font-semibold cursor-pointer'
               onClick={handleButtonClick}

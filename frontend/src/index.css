@@ -64,7 +64,7 @@ code {
 .Cinema .screen {
   height: 80px;
   background: white;
-  width: 100%;
+  width: 280px;
   transform: rotateX(-30deg) scale(1.2);
   box-shadow: 0 3px 10px 2px;
 }
