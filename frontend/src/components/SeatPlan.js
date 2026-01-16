@@ -16,9 +16,25 @@ const movies = [
   {
     title: '',
     price: 10,
-    occupied: generateRandomOccupiedSeats(1, 64, 64),
+    occupied: [],
   },
 ];
+const ALL_SEATS_DATA = Array.from({ length: 64 }, (_, i) => {
+  let type = 'NORMAL';
+  let price = 10;
+
+  if ([27, 28, 35, 36].includes(i)) {
+    type = 'VIP';
+    price = 25;
+  } else if (i >= 56) {
+    type = 'COUPLE'; // Back row
+    price = 30;
+  } else if (i < 8) {
+    type = 'PREMIUM'; // Front row
+    price = 15;
+  }
+  return { id: i, type, price };
+});
 
 function SeatPlan({ movie, selectedSession, user }) {
   const BASE_URL = process.env.REACT_APP_BASE_URL;
@@ -113,7 +129,10 @@ function SeatPlan({ movie, selectedSession, user }) {
   // Calculate price breakdown (matching backend UC-18 logic)
   const basePrice = movies[0].price;
   const seatCount = selectedSeats.length;
-  const subtotal = basePrice * seatCount;
+  const subtotal = selectedSeats.reduce((sum, seatId) => {
+        const seatObj = ALL_SEATS_DATA.find(s => s.id === seatId);
+        return sum + (seatObj ? seatObj.price : 0);
+    }, 0);
   const bookingFee = subtotal * 0.10; // 10% booking fee
 
   // Apply discount if promo code is valid
@@ -221,7 +240,6 @@ function SeatPlan({ movie, selectedSession, user }) {
         userName: appliedPromo ? `${order.userName} PROMO:${appliedPromo.code}` : order.userName,
       };
 
-      // Backend handles seat reservation, so we don't need to call updateSeatsInHall
       // The order creation endpoint will reserve seats automatically
       const orderResponse = await BuyTickets(BASE_URL, myOrder);
 
@@ -261,6 +279,7 @@ function SeatPlan({ movie, selectedSession, user }) {
     }
   };
 
+  // seat recommendation logic
   const [numSeats, setNumSeats] = useState(1);
   const handleRecommendSeats = () => {
     if (!numSeats || numSeats < 1) return;
@@ -318,6 +337,42 @@ function SeatPlan({ movie, selectedSession, user }) {
     }
   };
 
+
+  useEffect(() => {
+    const refreshInterval = setInterval(async () => {
+      // Only fetch and check if session exists AND the payment modal is NOT open
+      if (movieSession?.time && !showPaymentModal) {
+        try {
+          const latestData = await getSeatPlan(movie.id, movieSession);
+
+          // Check for overlap
+          const takenSeats = selectedSeats.filter(seat => latestData.includes(seat));
+
+          // ... inside your polling useEffect
+          if (takenSeats.length > 0) {
+            alert(`Seat ${takenSeats.map(s => s + 1).join(', ')} no longer available.`);
+
+            setSeatPlan(latestData);
+            setSelectedSeats(prev => prev.filter(s => !latestData.includes(s)));
+
+            // FIX: Use the local state setter, not the prop name
+            if (recommendedSeat) {
+              setRecommendedSeat(null);
+            }
+          } else {
+            setSeatPlan(latestData);
+          }
+        } catch (error) {
+          console.error('Refresh error:', error);
+        }
+      }
+    }, 5000);
+
+    return () => clearInterval(refreshInterval);
+    // Add showPaymentModal to dependencies so the interval knows when state changes
+  }, [movie.id, movieSession, selectedSeats, showPaymentModal]);
+
+
   return (
     <div className='flex flex-col items-center'>
       <div className='w-full md:w-1/2 lg:w-2/3 px-6'>
@@ -354,7 +409,7 @@ function SeatPlan({ movie, selectedSession, user }) {
             onSelectedSeatsChange={(seats) => setSelectedSeats(seats)}
             onRecommendedSeatChange={(seat) => setRecommendedSeat(seat)}
           />
-          
+
           <SeatShowcase />
 
           <p className='info mb-2 text-sm md:text-sm lg:text-base'>
@@ -437,7 +492,7 @@ function SeatPlan({ movie, selectedSession, user }) {
             <p className='info text-sm text-gray-500'>Please select a seat</p>
           )}
         </div>
-      )} 
+      )}
 
       {/* Success Popup */}
       {successPopupVisible && (

@@ -75,7 +75,7 @@ function SeatSelector({
               Apply
             </button>
           ) : (
-            <div className="w-0" /> 
+            <div className="w-0" />
           )}
         </div>
 
@@ -93,10 +93,22 @@ function SeatSelector({
           const isOccupied = movie.occupied.includes(seat);
           const isRec = Array.isArray(recommendedSeat) && recommendedSeat.includes(seat);
 
+          let typeClass = 'normal';
+          if (seat < 8) {
+            typeClass = 'premium';
+          } else if ([27, 28, 35, 36].includes(seat)) {
+            typeClass = 'vip';
+          } else if (seat >= 56) {
+            typeClass = 'couple';
+          }
+
           return (
             <span
               key={seat}
-              className={`seat ${isSelected ? 'selected' : ''} ${isOccupied ? 'occupied' : ''} ${isRec ? 'recommended' : ''}`}
+              // We add the typeClass here so the CSS can color it
+              className={`seat ${typeClass} ${isSelected ? 'selected' : ''} 
+          ${isOccupied ? 'occupied' : ''} 
+          ${isRec ? 'recommended' : ''}`}
               onClick={isOccupied ? null : () => handleSelectedState(seat)}
             />
           );

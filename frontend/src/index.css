@@ -105,6 +105,29 @@ code {
   visibility: hidden;
 }
 
+/* Normal Seat */
+.seat.normal { background-color: #cbd5e1; }
+
+/* Premium Seat */
+.seat.premium { 
+  background-color: #60a5fa; 
+  border: 2px solid #2563eb; 
+}
+
+/* VIP Seat */
+.seat.vip { 
+  background-color: #fbbf24; 
+  box-shadow: 0 0 5px rgba(217, 119, 6, 0.5);
+}
+
+/* Couple Seat: Spans 2 grid spaces */
+.seat.couple {
+  grid-column: span 2; 
+  width: 100%; /* Fill the 2-column span */
+  background-color: #f472b6;
+  border-radius: 15px;
+}
+
 @keyframes show-off {
   0% {
     transform: scale(1);
