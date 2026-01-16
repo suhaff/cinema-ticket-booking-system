@@ -3,7 +3,7 @@ import React from 'react';
 function SeatShowcase() {
   return (
     <div className='flex flex-col gap-4 my-6'>
-      {/* 1. SEAT STATUS LEGEND */}
+      {/* SEAT STATUS LEGEND */}
       <div className='border-b pb-4'>
         <p className='text-xs font-bold text-gray-500 uppercase mb-2 text-center'>Status</p>
         <ul className='ShowCase flex justify-center gap-6'>
@@ -19,7 +19,7 @@ function SeatShowcase() {
         </ul>
       </div>
 
-      {/* 2. SEAT TYPE LEGEND */}
+      {/* SEAT TYPE LEGEND */}
       <div>
         <p className='text-xs font-bold text-gray-500 uppercase mb-2 text-center'>Seat Types</p>
         <ul className='ShowCase flex flex-wrap justify-center gap-6'>
