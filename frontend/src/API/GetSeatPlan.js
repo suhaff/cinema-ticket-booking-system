@@ -1,7 +1,8 @@
 async function GetSeatPlan(movieId, movieSession = {}) {
   try {
     const response = await fetch(
-      `http://localhost:8080/api/v1/movie/${movieId}/${movieSession.time}`,
+     `http://localhost:8080/api/v1/movie/${movieId}/${encodeURIComponent(movieSession.time)}`,
+
       {
         method: 'GET',
         headers: {
