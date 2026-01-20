@@ -4,14 +4,14 @@ A full-stack cinema booking application with **intelligent showtime and seat rec
 
 ---
 
-## 🚀 Key Features
+## Key Features
 
-### ✅ Feature 1 — **Smart Showtime Recommendation (Frontend-Based)**
+### Feature 1 — **Smart Showtime Recommendation (Frontend-Based)**
 The system dynamically recommends the best showtime based on:
 
-- 🕒 **Current system time** — Past sessions are ignored  
-- 💺 **Seat availability** — Among future sessions, the one with the **most seats available** is recommended  
-- 🎯 **Visual Highlighting** — The recommended showtime is:
+- **Current system time** — Past sessions are ignored  
+- **Seat availability** — Among future sessions, the one with the **most seats available** is recommended  
+- **Visual Highlighting** — The recommended showtime is:
   - Highlighted in **green**
   - Marked with a **“Recommended” badge**
   - Slightly scaled up for better visibility  
@@ -20,10 +20,10 @@ This recommendation is currently handled **on the frontend (React)** inside `Mov
 
 ---
 
-### ✅ Feature 2 — **Best Seat Recommendation (Backend-Based)**
+### Feature 2 — **Best Seat Recommendation (Backend-Based)**
 The backend provides seat recommendations via:
 
-📌 **Service:**  
+**Service:**  
 `RecommendationAnalyticsService.java`
 
 It suggests the best seats in a hall based on:
@@ -34,7 +34,7 @@ This data can later be integrated into the seat selection UI.
 
 ---
 
-## 🏗️ Tech Stack
+## Tech Stack
 
 ### Frontend
 - React.js
@@ -50,10 +50,10 @@ This data can later be integrated into the seat selection UI.
 
 ---
 
-## 📂 Important Files
+## Important Files
 
-### 🎯 Frontend Recommendation Logic
-📄 `src/pages/MovieDetails.js`
+### Frontend Recommendation Logic
+`src/pages/MovieDetails.js`
 
 Responsible for:
 - Fetching movie sessions
@@ -64,8 +64,8 @@ Responsible for:
 
 ---
 
-### 🧠 Backend Analytics Service
-📄 `src/main/java/com/cinema/backend/services/RecommendationAnalyticsService.java`
+### Backend Analytics Service
+`src/main/java/com/cinema/backend/services/RecommendationAnalyticsService.java`
 
 Currently provides:
 - Simulated “best session” recommendation (to be upgraded later)
@@ -73,7 +73,7 @@ Currently provides:
 
 ---
 
-## 🔧 How Recommendation Works (Frontend Logic)
+## How Recommendation Works (Frontend Logic)
 
 For each movie:
 
@@ -86,7 +86,7 @@ For each movie:
 
 ---
 
-## 🔮 Future Improvements
+## Future Improvements
 
 Planned enhancements include:
 
@@ -97,7 +97,7 @@ Planned enhancements include:
 
 ---
 
-## ▶️ How to Run
+## How to Run
 
 ### Backend
 ```bash
